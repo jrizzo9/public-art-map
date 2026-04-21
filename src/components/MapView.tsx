@@ -353,7 +353,7 @@ export function MapView({
     wrap.appendChild(links);
 
     const narrow = map.getContainer().getBoundingClientRect().width < 640;
-    const popupMaxWidth = narrow ? "min(280px, calc(100vw - 48px))" : "280px";
+    const popupMaxWidth = narrow ? "min(680px, calc(100vw - 32px))" : "680px";
     const popupOuterH = measureArtworkPopupOuterHeightPx(wrap, popupMaxWidth);
 
     // Single flight: Mapbox places `center` at (padded focal point + offset). Positive offset.y moves the

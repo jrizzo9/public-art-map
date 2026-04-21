@@ -92,11 +92,12 @@
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
-  background: color-mix(in oklch, var(--muted) 42%, var(--card));
+  background: transparent;
 }
 
 .thumb {
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .thumbFallback {
