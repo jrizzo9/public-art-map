@@ -14,15 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Public Art Map",
-    template: "%s · Creative Waco",
+    default: "Creative Waco Public Art Map",
+    template: "%s · Creative Waco Public Art Map",
   },
-  description: "Explore public art across Waco, Texas — an interactive map by Creative Waco.",
-  openGraph: {
-    siteName: "Creative Waco Public Art Map",
-    locale: "en_US",
-    type: "website",
-  },
+  description: "Explore public art in Waco with location-based detail pages.",
 };
 
 export default function RootLayout({
@@ -31,11 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,110 +1,100 @@
-import type { Artwork } from "@/types/artwork";
-import { parseCsv } from "@/lib/csv";
-import { getRevalidateSeconds, getSheetCsvUrl } from "@/lib/env";
+import { z } from "zod";
+import Papa from "papaparse";
+import { env } from "./env";
 
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export type Artwork = {
+  slug: string;
+  title: string;
+  lat: number;
+  lng: number;
+  description?: string;
+  image?: string;
+  address?: string;
+  category?: string;
+};
 
-function normalizeHeader(h: string): string {
-  return h.trim().toLowerCase().replace(/\s+/g, "_");
+const rawArtworkSchema = z.object({
+  slug: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  lat: z.coerce.number().finite().min(-90).max(90),
+  lng: z.coerce.number().finite().min(-180).max(180),
+  description: z.string().optional(),
+  image: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : undefined)),
+  address: z.string().optional(),
+  category: z.string().optional(),
+});
+
+function normalizeRowKeys(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(row)) {
+    const key = k.trim().toLowerCase().replace(/\s+/g, "_");
+    out[key] = typeof v === "string" ? v.trim() : v;
+  }
+  return out;
 }
 
-function pick(row: Record<string, string>, keys: string[]): string | undefined {
-  for (const k of keys) {
-    const v = row[k];
-    if (v !== undefined && v !== "") return v;
+function pickFirst(row: Record<string, unknown>, keys: string[]): unknown {
+  for (const key of keys) {
+    const v = row[key];
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string" && !v.trim()) continue;
+    return v;
   }
   return undefined;
 }
 
-function rowToArtwork(row: Record<string, string>): Artwork | null {
-  const slugRaw = pick(row, ["slug", "url_slug", "id"]);
-  const title = pick(row, ["title", "name", "artwork_title"]);
-  const latRaw = pick(row, ["lat", "latitude"]);
-  const lngRaw = pick(row, ["lng", "lon", "long", "longitude"]);
-
-  if (!slugRaw || !title || latRaw === undefined || lngRaw === undefined) {
-    return null;
-  }
-
-  const slug = slugRaw.trim().toLowerCase();
-  if (!SLUG_RE.test(slug)) return null;
-
-  const lat = Number.parseFloat(latRaw);
-  const lng = Number.parseFloat(lngRaw);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-
-  const description = pick(row, ["description", "desc", "details"]) ?? null;
-  const image = pick(row, ["image", "image_url", "photo", "picture"]) ?? null;
-  const address = pick(row, ["address", "location"]) ?? null;
-  const category = pick(row, ["category", "type", "medium"]) ?? null;
-
+function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, unknown> {
   return {
-    slug,
-    title: title.trim(),
-    lat,
-    lng,
-    description: description?.trim() ? description.trim() : null,
-    image: image?.trim() ? image.trim() : null,
-    address: address?.trim() ? address.trim() : null,
-    category: category?.trim() ? category.trim() : null,
+    slug: pickFirst(row, ["slug", "id"]),
+    title: pickFirst(row, ["title", "name"]),
+    lat: pickFirst(row, ["lat", "latitude"]),
+    lng: pickFirst(row, ["lng", "lon", "longitude", "long"]),
+    description: pickFirst(row, ["description", "details", "about"]),
+    image: pickFirst(row, ["image", "image_url", "photo", "photo_url"]),
+    address: pickFirst(row, ["address", "location", "street_address"]),
+    category: pickFirst(row, ["category", "type"]),
   };
 }
 
-function sheetTextToArtworks(text: string): Artwork[] {
-  const rows = parseCsv(text.trim());
-  if (rows.length < 2) return [];
-
-  const headers = rows[0]!.map(normalizeHeader);
-  const out: Artwork[] = [];
-
-  for (let r = 1; r < rows.length; r++) {
-    const cells = rows[r]!;
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h] = cells[i]?.trim() ?? "";
-    });
-    const artwork = rowToArtwork(obj);
-    if (artwork) out.push(artwork);
+async function fetchCsvText(): Promise<string> {
+  const url = env.SHEET_CSV_URL();
+  if (!url) return "";
+  const res = await fetch(url, { next: { revalidate: env.REVALIDATE_SECONDS() } });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch SHEET_CSV_URL (${res.status})`);
   }
-
-  const seen = new Set<string>();
-  const unique: Artwork[] = [];
-  for (const a of out) {
-    if (seen.has(a.slug)) continue;
-    seen.add(a.slug);
-    unique.push(a);
-  }
-  return unique.sort((a, b) => a.title.localeCompare(b.title));
+  return await res.text();
 }
 
 export async function getArtworks(): Promise<Artwork[]> {
-  const url = getSheetCsvUrl();
-  if (!url) {
-    return [];
-  }
-
-  const res = await fetch(url, {
-    next: { revalidate: getRevalidateSeconds(), tags: ["sheet"] },
+  const csvText = await fetchCsvText();
+  if (!csvText) return [];
+  const parsed = Papa.parse<Record<string, unknown>>(csvText, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: false,
   });
 
-  if (!res.ok) {
-    throw new Error(`Sheet CSV fetch failed (${res.status})`);
+  const results: Artwork[] = [];
+  for (const row of parsed.data) {
+    const normalized = normalizeRowKeys(row);
+    const coerced = coerceRowToArtworkShape(normalized);
+    const maybe = rawArtworkSchema.safeParse(coerced);
+    if (!maybe.success) continue;
+    results.push(maybe.data);
   }
 
-  const text = await res.text();
-  return sheetTextToArtworks(text);
+  results.sort((a, b) => a.title.localeCompare(b.title));
+  return results;
 }
 
-export async function getArtworkBySlug(slug: string): Promise<Artwork | undefined> {
-  const normalized = slug.trim().toLowerCase();
-  if (!SLUG_RE.test(normalized)) return undefined;
-
-  const all = await getArtworks();
-  return all.find((a) => a.slug === normalized);
+export async function getArtworkBySlug(slug: string): Promise<Artwork | null> {
+  const artworks = await getArtworks();
+  return artworks.find((a) => a.slug === slug) ?? null;
 }
 
-export async function getAllSlugs(): Promise<string[]> {
-  const all = await getArtworks();
-  return all.map((a) => a.slug);
-}

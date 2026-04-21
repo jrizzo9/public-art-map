@@ -1,14 +1,17 @@
 import type { MetadataRoute } from "next";
-import { getSiteUrl } from "@/lib/env";
+import { env } from "@/lib/env";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = getSiteUrl();
+  const baseUrl = env.NEXT_PUBLIC_SITE_URL();
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: ["/embed/"],
-    },
-    sitemap: `${base}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/embed/"],
+      },
+    ],
+    sitemap: new URL("/sitemap.xml", baseUrl).toString(),
   };
 }
+

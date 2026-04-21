@@ -1,79 +1,74 @@
-# Creative Waco — Public Art Map
+## Waco Public Art Map
 
-Next.js app (App Router) deployed on **Vercel**, with:
+Next.js app that renders:
+- **Full map experience** at `/`
+- **SEO detail pages** at `/art/[slug]`
+- **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 
-- **`/`** — Full-screen Mapbox map + filterable list (Google Sheet data).
-- **`/art/[slug]`** — SEO-focused detail pages (indexed, canonical URL, JSON-LD).
-- **`/embed/art/[slug]`** — Minimal layout for iframe embeds on Webflow (`noindex`, canonical → full detail URL). Only listed origins may frame embeds (see `EMBED_ALLOWED_ORIGINS` / defaults in [`next.config.ts`](next.config.ts)).
+Data comes from a **published Google Sheet CSV** (no Google credentials required).
 
-Data is loaded from a **published Google Sheet CSV** (`SHEET_CSV_URL`) with time-based revalidation (`REVALIDATE_SECONDS`, default 300). Route segments use `export const revalidate = 300` — keep that aligned with sheet cache if you change cadence.
+## UI notes
 
-## Google Sheet columns
+- The map is **fullscreen**.
+- The left panel **floats over the map**.
+- Clicking a list item **opens an in-panel preview** (image + links) instead of navigating immediately.
 
-Use a header row; names are normalized (case/spacing → underscores). Accepted aliases are in [`src/lib/sheet.ts`](src/lib/sheet.ts).
+## Sheet contract (columns)
 
-| Column      | Required | Notes                                                |
-| ----------- | -------- | ---------------------------------------------------- |
-| `slug`      | Yes      | Lowercase letters, numbers, hyphens (`kebab-case`).  |
-| `title`     | Yes      | Display name (`name`, `artwork_title` also work).    |
-| `lat`/`lng` | Yes      | Decimal degrees (`latitude`, `longitude`, etc.).     |
-| `description` | No   | Plain text (paragraph breaks supported).             |
-| `image`     | No       | HTTPS URL (`image_url`, `photo`).                    |
-| `address`   | No       |                                                      |
-| `category`  | No       | Used for filters (`type`, `medium` also work).       |
+Your Google Sheet must have a header row and (at minimum) these columns:
 
-Publish the sheet: **File → Share → Publish to web → CSV**. Copy the URL into `SHEET_CSV_URL`.
+| Column | Required | Notes |
+|---|---:|---|
+| `slug` | yes | URL-safe, unique |
+| `title` | yes | |
+| `lat` | yes | decimal degrees |
+| `lng` | yes | decimal degrees |
+| `description` | no | plain text |
+| `image` | no | https URL |
+| `address` | no | |
+| `category` | no | |
+
+Invalid rows (missing required fields / invalid coords) are skipped.
+
+The CSV parser also accepts common variants like `latitude`/`longitude` and `name` (as `title`).
 
 ## Environment variables
 
-Copy [`.env.example`](.env.example) to `.env.local` for local development.
+Create `.env.local`:
 
-| Variable                       | Required | Purpose |
-| ------------------------------ | -------- | ------- |
-| `NEXT_PUBLIC_SITE_URL`         | Yes*     | Canonical URL, no trailing slash (e.g. `https://map.creativewaco.org`). Defaults to `VERCEL_URL` / localhost if unset at build time. |
-| `SHEET_CSV_URL`                | Yes      | Published CSV URL.                                   |
-| `NEXT_PUBLIC_MAPBOX_TOKEN`     | Yes      | Mapbox public token (GL JS).                         |
-| `NEXT_PUBLIC_MAPBOX_STYLE_URL` | No       | Custom Mapbox Studio style; defaults to Streets.     |
-| `REVALIDATE_SECONDS`           | No       | Sheet fetch revalidation (default `300`).            |
-| `EMBED_ALLOWED_ORIGINS`        | No       | Comma-separated origins for `frame-ancestors` on `/embed/*` (defaults to `creativewaco.org` + `www`). |
+```bash
+NEXT_PUBLIC_SITE_URL="https://map.creativewaco.org"
+SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+NEXT_PUBLIC_MAPBOX_TOKEN="pk.XXXX"
 
-\*Strongly recommended in production so sitemaps, canonicals, and OG URLs are correct.
+# Optional
+NEXT_PUBLIC_MAPBOX_STYLE_URL="mapbox://styles/..."
+REVALIDATE_SECONDS="300"
+EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
+```
 
-## Your manual checklist (deploy)
+## Webflow embed
 
-1. **Vercel** — Create/import the project; add env vars above.
-2. **DNS** — Point your subdomain (e.g. `map`) to Vercel (`CNAME` to `cname.vercel-dns.com` per Vercel’s domain UI).
-3. **Mapbox** — [Account dashboard](https://account.mapbox.com/) → copy default **public token** → `NEXT_PUBLIC_MAPBOX_TOKEN`.
-4. **Google Sheet** — Publish CSV; paste URL into `SHEET_CSV_URL`.
-5. **Webflow** — Embed an iframe pointing at your embed route, for example:
+Use an Embed element:
 
 ```html
 <iframe
-  title="Public art"
-  src="https://map.creativewaco.org/embed/art/your-piece-slug"
+  src="https://map.creativewaco.org/embed/art/<slug>"
+  style="width:100%;height:700px;border:0;"
   loading="lazy"
-  style="width:100%;min-height:520px;border:0;border-radius:12px;"
+  referrerpolicy="no-referrer-when-downgrade"
 ></iframe>
 ```
 
-Replace the domain and slug with your production host and sheet `slug`.
-
-## Development
+## Dev
 
 ```bash
-npm install
-npm run dev
+pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Visit `http://localhost:3000`.
 
-```bash
-npm run lint
-npm run build
-```
+## Deploy (Vercel)
 
-## SEO notes
-
-- [`src/app/sitemap.ts`](src/app/sitemap.ts) lists `/` and `/art/[slug]` URLs.
-- [`src/app/robots.ts`](src/app/robots.ts) allows crawling `/` and disallows `/embed/` (embed pages still set `noindex`).
-- Embed routes send `Content-Security-Policy: frame-ancestors …` so only your sites can iframe them.
+- Add a domain like `map.creativewaco.org` in Vercel.
+- Set the env vars above in Vercel (Production + Preview if desired).
