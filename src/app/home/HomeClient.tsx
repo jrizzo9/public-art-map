@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
@@ -144,6 +144,15 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   const onClearSelection = useCallback(() => {
     setSelectedSlug(undefined);
   }, []);
+
+  const skipClearSelectionOnMountRef = useRef(true);
+  useEffect(() => {
+    if (skipClearSelectionOnMountRef.current) {
+      skipClearSelectionOnMountRef.current = false;
+      return;
+    }
+    setSelectedSlug(undefined);
+  }, [disabledCategories, disabledCommissions, yearMin, yearMax]);
 
   return (
     <div className={styles.shell}>

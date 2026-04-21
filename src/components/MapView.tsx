@@ -18,7 +18,13 @@ const MOBILE_SHEET_HEIGHT_RATIO = 0.5;
 /** Extra top inset so the pin lands mid-to-upper screen (not hugging the top); popup sits above with context below. */
 const MOBILE_FLY_TOP_INSET_RATIO = 0.24;
 
-function selectionFlyPadding(map: mapboxgl.Map) {
+/** Smooth camera when fitting to filtered markers (filter changes). */
+const FIT_BOUNDS_DURATION_MS = 1150;
+/** Coalesce rapid filter tweaks (e.g. year typing) into one camera move. */
+const FIT_BOUNDS_DEBOUNCE_MS = 320;
+
+/** Padding so markers / bounds stay in the visible map area (not under the floating panel or bottom sheet). */
+function mapChromePadding(map: mapboxgl.Map) {
   const { width: w, height: h } = map.getContainer().getBoundingClientRect();
   if (!w || !h) {
     return { top: 48, right: 32, bottom: 120, left: 360 };
@@ -40,6 +46,10 @@ function selectionFlyPadding(map: mapboxgl.Map) {
   const right = Math.min(56, Math.round(w * 0.04));
 
   return { top, right, bottom, left };
+}
+
+function selectionFlyPadding(map: mapboxgl.Map) {
+  return mapChromePadding(map);
 }
 
 type Props = {
@@ -64,8 +74,8 @@ export function MapView({
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const markerBySlugRef = useRef(new Map<string, mapboxgl.Marker>());
   const popupRef = useRef<mapboxgl.Popup | null>(null);
-  const didFitBoundsRef = useRef(false);
   const ignoreNextMapClickRef = useRef(false);
+  const hasFittedBoundsOnceRef = useRef(false);
   const onSelectSlugRef = useRef(onSelectSlug);
   const onClearSelectionRef = useRef(onClearSelection);
 
@@ -129,7 +139,6 @@ export function MapView({
     for (const m of markersRef.current) m.remove();
     markersRef.current = [];
     markerBySlugRef.current.clear();
-    didFitBoundsRef.current = false;
 
     for (const art of artworks) {
       const el = document.createElement("button");
@@ -152,13 +161,25 @@ export function MapView({
       markersRef.current.push(marker);
       markerBySlugRef.current.set(art.slug, marker);
     }
+  }, [artworks]);
 
-    if (bounds) {
-      map.fitBounds(bounds, { padding: 60, duration: 0, maxZoom: 15 });
-      didFitBoundsRef.current = true;
-    }
-    // Intentionally omit onSelectSlug: parent re-renders must not rebuild markers + fitBounds.
-  }, [artworks, bounds]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !bounds) return;
+
+    const delay = hasFittedBoundsOnceRef.current ? FIT_BOUNDS_DEBOUNCE_MS : 0;
+    const id = window.setTimeout(() => {
+      map.fitBounds(bounds, {
+        padding: mapChromePadding(map),
+        duration: FIT_BOUNDS_DURATION_MS,
+        maxZoom: 15,
+        essential: true,
+      });
+      hasFittedBoundsOnceRef.current = true;
+    }, delay);
+
+    return () => window.clearTimeout(id);
+  }, [bounds]);
 
   useEffect(() => {
     for (const art of artworks) {

@@ -26,7 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Visual theme**: map panel, filters, list, artwork detail cards, embed layout, art detail route, and not-found page use shared **semantic tokens** (foreground, muted, primary, card, border, shadows, radius) instead of hardcoded grays and accent hex values.
 - Root fonts: **Inter**, **JetBrains Mono**, and **Source Serif 4** via `next/font/google` (replacing Geist) to match the theme stack.
-- Left panel: **single scrollbar** for title, filters, artwork list, and count (no separate scroll regions); **Showing X of Y** pinned to the bottom with smaller type.
+- Left panel: **pinned header** (title + Filters) with a **scrollable list** below; **Showing X of Y** stays at the bottom of the scroll area with smaller type.
+- **Map markers and sidebar list dots**: drop the dark **foreground border ring** (shadow only).
+- **Filter fit**: when results change, the map **animates fitBounds** to filtered markers using **floating panel / bottom-sheet padding**, with **debouncing** so quick filter tweaks (e.g. year typing) trigger one camera move.
 - Panel typography and controls unified (pill toggles for filters vs checkbox lists).
 - **`REVALIDATE_SECONDS`**: **`0`** disables fetch caching (`cache: "no-store"`) for always-fresh CSV; otherwise ISR revalidation in seconds (default **300**).
 
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
 - Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
 - Selection **flies straight** to the artwork (no intermediate refit-to-all-markers) and marker clicks stay selected (map background click no longer clears selection in the same gesture).
 - Fix production build failure caused by duplicate route definitions (removed legacy `/(site)` route group).

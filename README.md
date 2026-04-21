@@ -12,7 +12,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 - **Theming:** the app uses **Tailwind CSS v4**, **shadcn/ui** primitives, and a shared **semantic palette** (CSS variables in `src/app/globals.css`) so the floating panel, detail pages, embed shell, and Mapbox-built popup/marker chrome stay visually consistent.
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~half the viewport) for the panel (collapsible **Filters** + artwork list); selecting an artwork flies the marker to about the **middle of the clear map** (slightly below center) so the popup can sit **above** the dot with map context underneath.
-- **Filters:** category (colors match map markers), commission, and optional **year** range—expand **Filters** to change what appears on the map and in the list. The whole panel scrolls as **one** column (including the **Showing X of Y** footer).
+- **Filters:** category (colors match map markers), commission, and optional **year** range—expand **Filters** to change what appears on the map and in the list. The **title and Filters stay fixed**; only the **artwork list** (and **Showing X of Y** under it) scrolls. Changing filters **refits the map** to the visible markers with a short debounce when values change quickly.
 - Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** (tip points at the marker) with title, optional image, and links to details/embed.
 - Click empty map area to clear the popup selection.
 
