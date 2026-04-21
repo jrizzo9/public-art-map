@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
 import { MapView } from "@/components/MapView";
 import styles from "./home.module.css";
+
+const CREATIVE_WACO_HOME = "https://creativewaco.org/";
+const CREATIVE_WACO_LOGO_URL =
+  "https://yrnfoftkuamimcaownig.supabase.co/storage/v1/object/public/culturalyst/is5gglgrgelofzc4ia7bm4cqfu71";
 
 type Props = {
   artworks: Artwork[];
@@ -338,6 +343,22 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
 
   return (
     <div className={styles.shell}>
+      <a
+        href={CREATIVE_WACO_HOME}
+        className={styles.brandLogo}
+        aria-label="Creative Waco — visit creativewaco.org"
+      >
+        <Image
+          src={CREATIVE_WACO_LOGO_URL}
+          alt=""
+          width={220}
+          height={56}
+          className={styles.brandLogoImg}
+          priority
+          sizes="220px"
+        />
+      </a>
+
       <section className={styles.map}>
         <MapView
           artworks={filtered}

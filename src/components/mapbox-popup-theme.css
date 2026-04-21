@@ -1,0 +1,9 @@
+/* Mapbox GL wraps setDOMContent in .mapboxgl-popup-content — round to match app cards. */
+.mapboxgl-popup-content {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: calc(var(--radius) + 8px);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  box-shadow: var(--shadow-lg);
+}

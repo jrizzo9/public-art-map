@@ -1,6 +1,7 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
+import "@/components/mapbox-popup-theme.css";
 
 import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";

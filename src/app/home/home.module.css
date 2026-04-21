@@ -4,6 +4,36 @@
   position: relative;
 }
 
+.brandLogo {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  z-index: 3;
+  display: block;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  transition: opacity 0.15s ease;
+}
+
+.brandLogo:hover {
+  opacity: 0.88;
+}
+
+.brandLogo:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--background) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
+}
+
+.brandLogoImg {
+  height: 40px;
+  width: auto;
+  max-width: min(220px, calc(100vw - 48px));
+  display: block;
+  object-fit: contain;
+}
+
 .map {
   position: fixed;
   inset: 0;
