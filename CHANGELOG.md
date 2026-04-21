@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Mobile layout:** **fullscreen map** with a **floating bottom sheet** (~50% height) for the list; fly-to centers the marker in the map region above the sheet (not under the overlaid panel).
+- **Mobile layout:** **fullscreen map** with a **floating bottom sheet** (~50% height) for the list; fly-to frames the marker toward the **middle** of the clear map above the sheet (slightly lower than strict center) so the popup sits above the pin with context below (not hidden under the sheet).
 - Left panel layout: vertically centered, tighter typography/spacing; subtitle and collapse control removed from the header.
 - Search input spacing under the field adjusted for clearer separation from the count row.
 

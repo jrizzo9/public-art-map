@@ -12,6 +12,8 @@ const PANEL_GUTTER_PX = 28;
 
 /** Bottom sheet ~50% height on narrow viewports — matches `.panel` mobile styles in `home.module.css`. */
 const MOBILE_SHEET_HEIGHT_RATIO = 0.5;
+/** Extra top inset so the pin lands mid-to-upper screen (not hugging the top); popup sits above with context below. */
+const MOBILE_FLY_TOP_INSET_RATIO = 0.24;
 
 function selectionFlyPadding(map: mapboxgl.Map) {
   const { width: w, height: h } = map.getContainer().getBoundingClientRect();
@@ -22,9 +24,8 @@ function selectionFlyPadding(map: mapboxgl.Map) {
   const isNarrow = w < 640;
 
   if (isNarrow) {
-    // Reserve the bottom half for the floating sheet so the marker sits centered in the top half.
     const bottom = Math.round(h * MOBILE_SHEET_HEIGHT_RATIO);
-    const top = Math.max(8, Math.round(h * 0.03));
+    const top = Math.max(8, Math.round(h * MOBILE_FLY_TOP_INSET_RATIO));
     const side = Math.max(12, Math.round(w * 0.04));
     return { top, right: side, bottom, left: side };
   }
@@ -313,11 +314,13 @@ export function MapView({
 
     wrap.appendChild(links);
 
+    const narrow = map.getContainer().getBoundingClientRect().width < 640;
+
     const popup = new mapboxgl.Popup({
       closeButton: false,
       closeOnClick: false,
       maxWidth: "280px",
-      offset: 18,
+      offset: narrow ? ([0, 28] as [number, number]) : 18,
     })
       .setLngLat([art.lng, art.lat])
       .setDOMContent(wrap)
