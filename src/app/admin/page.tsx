@@ -1,93 +1,40 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
-import { env } from "@/lib/env";
-import { getArtworks } from "@/lib/sheet";
 import styles from "./admin.module.css";
+import { ImageUploader } from "./ImageUploader";
+import { CloudinaryLibrary } from "./CloudinaryLibrary";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Admin",
+  robots: { index: false, follow: false },
 };
 
-function pill(ok: boolean): { className: string; label: string } {
-  return ok
-    ? { className: `${styles.pill} ${styles.pillOk}`, label: "OK" }
-    : { className: `${styles.pill} ${styles.pillWarn}`, label: "Needs setup" };
-}
-
 export default async function AdminPage() {
-  const sheetUrl = env.SHEET_CSV_URL();
-  const hasSheet = Boolean(sheetUrl);
-  const artworks = await getArtworks();
-
-  const sheetStatus = pill(hasSheet);
-  const dataStatus = pill(hasSheet && artworks.length > 0);
-
   return (
     <div className={styles.shell}>
       <div className={styles.wrap}>
         <SiteBrandBar />
 
-        <header className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Admin</h1>
-            <p className={styles.sub}>
-              Quick status + useful links for verifying the map backend.
-            </p>
-          </div>
-        </header>
-
-        <section className={styles.grid} aria-label="Admin status">
-          <div className={`${styles.card} ${styles.cardHalf}`}>
+        <section className={styles.grid} aria-label="Cloudinary admin">
+          <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <p className={styles.cardTitle}>Data source</p>
-              <span className={sheetStatus.className}>{sheetStatus.label}</span>
+              <p className={styles.cardTitle}>Upload image → Cloudinary</p>
             </div>
             <div className={styles.cardBody}>
-              <div className={styles.kv}>
-                <div className={styles.k}>SHEET_CSV_URL</div>
-                <div className={styles.v}>
-                  {sheetUrl ? sheetUrl : <span className={styles.muted}>(empty)</span>}
-                </div>
-              </div>
-              <p className={styles.sub}>
-                Set this in <code>.env.local</code> (server-side) to pull the
-                published Google Sheet CSV.
+              <p className={styles.sub} style={{ marginTop: 0 }}>
+                Upload HEIC/PNG/JPG, we’ll auto-rotate, resize, convert to JPEG, and upload
+                to Cloudinary using your server-side credentials.
               </p>
-            </div>
-          </div>
-
-          <div className={`${styles.card} ${styles.cardHalf}`}>
-            <div className={styles.cardHeader}>
-              <p className={styles.cardTitle}>Backend</p>
-              <span className={dataStatus.className}>{dataStatus.label}</span>
-            </div>
-            <div className={styles.cardBody}>
-              <div className={styles.kv}>
-                <div className={styles.k}>Artworks parsed</div>
-                <div className={styles.v}>{artworks.length}</div>
-              </div>
-              <div className={styles.kv}>
-                <div className={styles.k}>REVALIDATE_SECONDS</div>
-                <div className={styles.v}>{env.REVALIDATE_SECONDS()}</div>
-              </div>
+              <ImageUploader />
             </div>
           </div>
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <p className={styles.cardTitle}>API links</p>
+              <p className={styles.cardTitle}>Cloudinary library</p>
             </div>
             <div className={styles.cardBody}>
-              <div className={styles.links}>
-                <Link href="/api/health">/api/health</Link>
-                <Link href="/api/artworks">/api/artworks</Link>
-                <Link href="/api/artworks?limit=5">/api/artworks?limit=5</Link>
-                <Link href="/api/artworks?q=waco">/api/artworks?q=waco</Link>
-              </div>
-              <p className={styles.sub}>
-                Tip: the API responses are JSON, so your browser will show them
-                directly.
-              </p>
+              <CloudinaryLibrary />
             </div>
           </div>
         </section>

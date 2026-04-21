@@ -75,6 +75,15 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
 
+### Cloudinary admin (upload + library)
+
+The `/admin` page includes a simple Cloudinary uploader (HEIC/PNG/JPG → JPEG) and a
+library view that lists images in your Cloudinary account (scoped to `CLOUDINARY_FOLDER`
+when set). The Cloudinary API credentials must be present server-side.
+
+- Upload endpoint: `POST /api/admin/cloudinary`
+- Library endpoint: `GET /api/admin/cloudinary/library`
+
 The artworks endpoint supports:
 
 - `?q=<text>`: case-insensitive substring search across common fields

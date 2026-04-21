@@ -11,6 +11,7 @@ import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "../art-detail-shell.module.css";
 import nearbyStyles from "../nearby-art.module.css";
 import Image from "next/image";
+import { SITE_ORG_NAME, SITE_PRODUCT_NAME } from "@/lib/site";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -24,16 +25,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteUrl = env.NEXT_PUBLIC_SITE_URL();
   const url = new URL(`/art/${artwork.slug}`, siteUrl).toString();
+  const description = artwork.description?.slice(0, 160) || "Public art detail page.";
+  const ogDescription =
+    artwork.description?.slice(0, 200) || "Public art detail page.";
 
   return {
     title: artwork.title,
-    description: artwork.description?.slice(0, 160) || "Public art detail page.",
+    description,
     alternates: { canonical: url },
     openGraph: {
+      type: "article",
       title: artwork.title,
-      description: artwork.description?.slice(0, 200) || "Public art detail page.",
+      description: ogDescription,
       url,
       images: artwork.image ? [{ url: artwork.image }] : undefined,
+    },
+    twitter: {
+      card: artwork.image ? "summary_large_image" : "summary",
+      title: artwork.title,
+      description,
+      images: artwork.image ? [artwork.image] : undefined,
     },
   };
 }
@@ -43,6 +54,33 @@ export default async function ArtPage({ params }: Props) {
   const artworks = await getArtworks();
   const artwork = artworks.find((a) => a.slug === slug) ?? null;
   if (!artwork) notFound();
+
+  const siteUrl = env.NEXT_PUBLIC_SITE_URL();
+  const canonicalUrl = new URL(`/art/${artwork.slug}`, siteUrl).toString();
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "VisualArtwork",
+    name: artwork.title,
+    description: artwork.description ?? undefined,
+    image: artwork.image ? [artwork.image] : undefined,
+    url: canonicalUrl,
+    creator: artwork.artist
+      ? { "@type": "Person", name: artwork.artist }
+      : undefined,
+    dateCreated: artwork.year != null ? String(artwork.year) : undefined,
+    contentLocation: {
+      "@type": "Place",
+      name: artwork.address ?? undefined,
+      address: artwork.address ?? undefined,
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: artwork.lat,
+        longitude: artwork.lng,
+      },
+    },
+    provider: { "@type": "Organization", name: SITE_ORG_NAME },
+    isPartOf: { "@type": "WebSite", name: SITE_PRODUCT_NAME, url: siteUrl },
+  };
 
   const nearby =
     artworks.length > 1
@@ -75,6 +113,10 @@ export default async function ArtPage({ params }: Props) {
 
   return (
     <div className={shellStyles.shell}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div
         className={`${shellStyles.bg} ${detailMapBgUrl ? shellStyles.bgWithMap : shellStyles.bgFallback}`}
         aria-hidden

@@ -44,6 +44,7 @@
   z-index: 2;
   transform: translateY(-50%);
   padding: 10px 10px 0;
+  transition: height 0.18s ease;
 
   font-size: var(--panel-body);
   line-height: 1.45;
@@ -171,6 +172,12 @@
 
 .filterDetails[open] .filtersInner {
   border-top: 1px solid color-mix(in oklch, var(--border) 58%, transparent);
+  /* Mobile: allow long filter lists to scroll inside the bottom sheet. */
+  max-height: 40vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .filterDetails:not([open]) .filtersInner {
@@ -473,5 +480,11 @@
     box-shadow: var(--shadow-lg);
     padding-bottom: env(safe-area-inset-bottom, 0);
     padding-top: 12px;
+  }
+
+  /* When the filters menu is open, expand into a true bottom-sheet. */
+  .panelFiltersOpen {
+    height: 72vh;
+    height: 72dvh;
   }
 }

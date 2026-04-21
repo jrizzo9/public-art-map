@@ -1,6 +1,7 @@
 .shell {
   min-height: 100vh;
-  padding: 24px;
+  /* Leave room for the fixed SiteBrandBar (logo + title). */
+  padding: calc(24px + max(12px, env(safe-area-inset-top, 0px)) + 52px) 24px 24px;
   background: radial-gradient(
       1200px 600px at 10% -10%,
       color-mix(in oklch, var(--primary) 16%, transparent),

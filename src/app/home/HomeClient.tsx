@@ -273,6 +273,7 @@ function deriveFacetUi(
 export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   /** Empty = do not filter by this facet; non-empty = only matching artworks */
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => new Set());
@@ -443,8 +444,14 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
         />
       </section>
 
-      <aside className={styles.panel} aria-label="Artwork list">
-          <details className={styles.filterDetails}>
+      <aside
+        className={`${styles.panel}${filtersOpen ? ` ${styles.panelFiltersOpen}` : ""}`}
+        aria-label="Artwork list"
+      >
+          <details
+            className={styles.filterDetails}
+            onToggle={(e) => setFiltersOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
             <summary className={styles.filterSummary} id="filters-summary">
               <span className={styles.filterChevron} aria-hidden />
               <span>Filters</span>

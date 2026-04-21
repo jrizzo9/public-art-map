@@ -5,11 +5,20 @@ import { getArtworks } from "@/lib/sheet";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = env.NEXT_PUBLIC_SITE_URL();
   const artworks = await getArtworks();
+  const now = new Date();
 
   return [
-    { url: new URL("/", baseUrl).toString() },
+    {
+      url: new URL("/", baseUrl).toString(),
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 1,
+    },
     ...artworks.map((a) => ({
       url: new URL(`/art/${a.slug}`, baseUrl).toString(),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
     })),
   ];
 }

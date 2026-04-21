@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Admin status page (`/admin`) with basic env/data checks and links to API endpoints.
+- Cloudinary admin at `/admin`:
+  - Upload images (HEIC/PNG/JPG) with auto-rotate, resize, and JPEG conversion, then upload to Cloudinary.
+  - Browse a Cloudinary “library” grid and click an item to copy its URL.
+- Cloudinary admin endpoints:
+  - `POST /api/admin/cloudinary` (convert + upload)
+  - `GET /api/admin/cloudinary/library` (list images, scoped to `CLOUDINARY_FOLDER` when set)
+- Cloudinary helpers:
+  - `src/lib/cloudinary.ts` (signed uploads)
+  - `src/lib/cloudinary-admin.ts` (Admin API listing)
+- `sharp` dependency for server-side image processing.
 - JSON API endpoints: `/api/health`, `/api/artworks` (supports `q`, `category`, `limit`), and `/api/artworks/[slug]`.
 - Cloudinary migration helpers:
   - `scripts/migrate-maphub-to-cloudinary.mjs` (uploads MapHub image URLs; writes `cloudinary-image-urls.csv`)
@@ -38,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Admin `/admin` page now focuses on Cloudinary (uploader + library) instead of sheet editing/status checks.
 - Update one MapHub source URL to the smaller `544_400` variant.
 - Stop treating the sheet `id` column as a slug source (only use `slug`, otherwise derive from `title`).
 - Home list meta line now shows **Collection, Artist, Year** (no category/address).
@@ -65,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- Apps Script–based live Google Sheet editing from `/admin`.
 - **Map popup preview:** remove the **Embed →** link (embed routes still exist for Webflow iframes).
 - **Free-text search** on the map home panel (refining is via filters only).
 

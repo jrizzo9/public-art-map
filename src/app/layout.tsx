@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { env } from "@/lib/env";
 import {
   SITE_METADATA_DEFAULT_TITLE,
   SITE_METADATA_TITLE_TEMPLATE,
@@ -25,14 +26,28 @@ const fontSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL()),
   title: {
     default: SITE_METADATA_DEFAULT_TITLE,
     template: SITE_METADATA_TITLE_TEMPLATE,
   },
   description: "Explore public art in Waco with location-based detail pages.",
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: SITE_METADATA_DEFAULT_TITLE,
+    description: "Explore public art in Waco with location-based detail pages.",
+    images: [{ url: "/opengraph-image" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_METADATA_DEFAULT_TITLE,
+    description: "Explore public art in Waco with location-based detail pages.",
+    images: ["/twitter-image"],
+  },
   icons: {
-    icon: [{ url: "/favicon.png" }],
-    apple: [{ url: "/favicon.png" }],
+    icon: [{ url: "/globe.svg" }],
+    apple: [{ url: "/globe.svg" }],
   },
 };
 
