@@ -288,7 +288,9 @@ export function MapView({
     const meta = document.createElement("div");
     meta.className = popupStyles.meta;
     meta.textContent =
-      (art.category ?? "Artwork") + (art.address ? ` · ${art.address}` : "");
+      [art.artist?.trim(), art.year ? String(art.year) : undefined]
+        .filter(Boolean)
+        .join(", ") || art.category || "Artwork";
     wrap.appendChild(meta);
 
     if (art.image) {
@@ -335,14 +337,7 @@ export function MapView({
       });
     });
 
-    const embed = document.createElement("a");
-    embed.href = `/embed/art/${art.slug}`;
-    embed.textContent = "Embed →";
-    embed.className = popupStyles.link;
-    embed.addEventListener("click", (e) => e.stopPropagation());
-
     links.appendChild(details);
-    links.appendChild(embed);
 
     if (art.externalUrl) {
       const ext = document.createElement("a");

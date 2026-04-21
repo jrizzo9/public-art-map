@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Map popup preview:** show **Artist, Year** (when available) in the meta line instead of category/address.
 - **Branding copy:** visible product title is **Public Art Map** (replacing **Waco** in that label); browser titles use **`SITE_METADATA_DEFAULT_TITLE`** / **`SITE_METADATA_TITLE_TEMPLATE`** from `site.ts`.
 - **Artwork detail (`/art/[slug]`):** same fixed **logo + title** chrome as the map home (via **`SiteBrandBar`**); removed the duplicate product label from the panel **← Map** row.
 - **Home filters:** **Filters** `<details>` sits flush inside the panel (drop legacy negative horizontal margins); summary row is a compact bordered control with optional **active count** badge on the **right**; inner filter grid padding aligned with the panel.
@@ -48,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Map popup preview:** remove the **Embed →** link (embed routes still exist for Webflow iframes).
 - **Free-text search** on the map home panel (refining is via filters only).
 
 ### Fixed
