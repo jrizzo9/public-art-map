@@ -81,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Add descriptive `alt` text to **Nearby art** thumbnails for better accessibility/SEO.
 - Document required `NEXT_PUBLIC_MAPBOX_TOKEN` env var on Vercel to avoid client-side Mapbox GL initialization errors (“This page couldn’t load”).
 - **Mobile map popup:** move the popup card further upward so the marker dot stays visible beneath it.
 - **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and use a **single smooth `flyTo`** with a vertical **`offset`** so the **popup card** (not just the marker) lands centered within the padded map chrome after selection.

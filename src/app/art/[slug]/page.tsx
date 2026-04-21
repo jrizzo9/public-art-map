@@ -179,7 +179,7 @@ export default async function ArtPage({ params }: Props) {
                       {a.image ? (
                         <Image
                           src={a.image}
-                          alt=""
+                          alt={a.title}
                           fill
                           sizes="(max-width: 720px) 45vw, 250px"
                           className={nearbyStyles.thumb}
