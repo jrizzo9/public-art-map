@@ -129,6 +129,14 @@
   padding: 10px 10px 16px 10px;
 }
 
+.nearbyWrap {
+  position: relative;
+  z-index: 2;
+  width: min(860px, 100%);
+  max-width: 100%;
+  margin-top: 14px;
+}
+
 .backRow {
   display: flex;
   align-items: center;

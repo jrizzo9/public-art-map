@@ -15,8 +15,8 @@ import type { Artwork } from "@/lib/sheet";
 const PANEL_RESERVE_PX = 340;
 const PANEL_GUTTER_PX = 28;
 
-/** Bottom sheet ~50% height on narrow viewports — matches `.panel` mobile styles in `home.module.css`. */
-const MOBILE_SHEET_HEIGHT_RATIO = 0.5;
+/** Bottom sheet ~30% height on narrow viewports — matches `.panel` mobile styles in `home.module.css`. */
+const MOBILE_SHEET_HEIGHT_RATIO = 0.3;
 /** Extra top inset so the pin lands mid-to-upper screen (not hugging the top); popup sits above with context below. */
 const MOBILE_FLY_TOP_INSET_RATIO = 0.24;
 
@@ -370,8 +370,8 @@ export function MapView({
     });
 
     // Anchor bottom = bottom edge (and tip) sits at lnglat so the card is above the dot.
-    // Negative Y offset moves the popup up (Mapbox: negative is up); positive was pushing the tip through the marker on mobile.
-    const popupOffsetY = narrow ? -22 : -18;
+    // Negative Y offset moves the popup up (Mapbox: negative is up); keep extra lift on mobile so the dot remains visible.
+    const popupOffsetY = narrow ? -68 : -18;
 
     const popup = new mapboxgl.Popup({
       anchor: "bottom",

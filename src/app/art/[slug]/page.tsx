@@ -3,11 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ViewTransition } from "react";
 import { env } from "@/lib/env";
+import { haversineDistanceKm, kmToMiles } from "@/lib/geo";
 import { mapboxStaticSnapshotUrl } from "@/lib/mapbox-static";
-import { getArtworkBySlug } from "@/lib/sheet";
+import { getArtworks } from "@/lib/sheet";
 import { ArtworkDetail } from "@/components/ArtworkDetail";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "../art-detail-shell.module.css";
+import nearbyStyles from "../nearby-art.module.css";
+import Image from "next/image";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -15,7 +18,8 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const artwork = await getArtworkBySlug(slug);
+  const artworks = await getArtworks();
+  const artwork = artworks.find((a) => a.slug === slug) ?? null;
   if (!artwork) return {};
 
   const siteUrl = env.NEXT_PUBLIC_SITE_URL();
@@ -36,8 +40,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArtPage({ params }: Props) {
   const { slug } = await params;
-  const artwork = await getArtworkBySlug(slug);
+  const artworks = await getArtworks();
+  const artwork = artworks.find((a) => a.slug === slug) ?? null;
   if (!artwork) notFound();
+
+  const nearby =
+    artworks.length > 1
+      ? artworks
+          .filter((a) => a.slug !== artwork.slug)
+          .map((a) => {
+            const km = haversineDistanceKm(
+              { lat: artwork.lat, lng: artwork.lng },
+              { lat: a.lat, lng: a.lng },
+            );
+            return { artwork: a, km, miles: kmToMiles(km) };
+          })
+          .sort((a, b) => a.km - b.km)
+          .slice(0, 6)
+      : [];
 
   const mapboxToken = env.NEXT_PUBLIC_MAPBOX_TOKEN();
   const mapboxStyleUrl = env.NEXT_PUBLIC_MAPBOX_STYLE_URL();
@@ -96,6 +116,65 @@ export default async function ArtPage({ params }: Props) {
           </div>
         </ViewTransition>
       </main>
+
+      {nearby.length ? (
+        <section className={shellStyles.nearbyWrap} aria-label="Nearby art">
+          <div className={nearbyStyles.section}>
+            <div className={nearbyStyles.headerRow}>
+              <h2 className={nearbyStyles.title}>Nearby art</h2>
+              <p className={nearbyStyles.subtitle}>Sorted by distance</p>
+            </div>
+
+            <div className={nearbyStyles.grid}>
+              {nearby.map(({ artwork: a, miles }) => (
+                <div key={a.slug} className={nearbyStyles.card}>
+                  <Link
+                    href={`/art/${a.slug}`}
+                    className={nearbyStyles.mainLink}
+                    transitionTypes={["nav-forward"]}
+                  >
+                    <div className={nearbyStyles.thumbWrap} aria-hidden>
+                      {a.image ? (
+                        <Image
+                          src={a.image}
+                          alt=""
+                          fill
+                          sizes="(max-width: 720px) 45vw, 250px"
+                          className={nearbyStyles.thumb}
+                        />
+                      ) : (
+                        <div className={nearbyStyles.thumbFallback}>Photo soon</div>
+                      )}
+                    </div>
+
+                    <div className={nearbyStyles.content}>
+                      <p className={nearbyStyles.cardTitle}>{a.title}</p>
+                      <div className={nearbyStyles.meta}>
+                        {(a.artist || a.year != null) && (
+                          <div>
+                            {[a.artist, a.year != null ? String(a.year) : null]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/art/${a.slug}`}
+                    className={nearbyStyles.distancePill}
+                    aria-label={`View details (${miles < 10 ? miles.toFixed(1) : Math.round(miles)} miles away)`}
+                    transitionTypes={["nav-forward"]}
+                  >
+                    {miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`}
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

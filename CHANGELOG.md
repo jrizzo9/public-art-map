@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Artwork detail page **Nearby art** section (sorted by distance) with thumbnail tiles and distance pill.
+- Geo helpers (`haversineDistanceKm`, `kmToMiles`) for computing “nearby” distances.
 - **`SiteBrandBar`** (`src/components/SiteBrandBar.tsx`) and **`src/lib/site.ts`** (`SITE_PRODUCT_NAME`, default metadata title template) so **Public Art Map** + Creative Waco logo stay consistent on **home**, **`/art/[slug]`**, **404**, and the **embed** artwork header link.
 - **View Transitions** (Next `experimental.viewTransition`) for **map home ↔ `/art/[slug]`** navigations, with **nav-forward** / **nav-back** CSS, shared **logo** `view-transition-name` anchor, and **Details** (list + map popup) / **← Map** / 404 back using `transitionTypes` on `Link` or `router.push`.
 - **Art detail shell** (`art-detail-shell.module.css`): same **Creative Waco** wordmark; **centered** frosted **panel**; **page-level scroll** for long copy; **Mapbox Static Images** snapshot of the artwork’s **lat/lng** (same `NEXT_PUBLIC_MAPBOX_TOKEN` + `NEXT_PUBLIC_MAPBOX_STYLE_URL` as the map) with a **dark** top-to-bottom **overlay**; **gradient fallback** when the API is not used.
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Mobile home panel (bottom sheet):** reduce height from ~50% to ~30% of the viewport.
 - **Map popup preview:** show **Artist, Year** (when available) in the meta line instead of category/address.
 - **Branding copy:** visible product title is **Public Art Map** (replacing **Waco** in that label); browser titles use **`SITE_METADATA_DEFAULT_TITLE`** / **`SITE_METADATA_TITLE_TEMPLATE`** from `site.ts`.
 - **Artwork detail (`/art/[slug]`):** same fixed **logo + title** chrome as the map home (via **`SiteBrandBar`**); removed the duplicate product label from the panel **← Map** row.
@@ -54,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Mobile map popup:** move the popup card further upward so the marker dot stays visible beneath it.
 - **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and use a **single smooth `flyTo`** with a vertical **`offset`** so the **popup card** (not just the marker) lands centered within the padded map chrome after selection.
 - Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
 - Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
