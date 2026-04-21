@@ -1,7 +1,7 @@
 .section {
   margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  border-top: 0;
 }
 
 .headerRow {
@@ -17,13 +17,13 @@
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  color: var(--card-foreground);
+  color: rgb(255 255 255 / 0.92);
 }
 
 .subtitle {
   margin: 0;
   font-size: 12px;
-  color: var(--muted-foreground);
+  color: rgb(255 255 255 / 0.72);
 }
 
 .grid {
@@ -63,8 +63,6 @@
   gap: 10px;
   text-decoration: none;
   color: inherit;
-  /* reserve space so long titles/meta never sit under the distance pill */
-  padding-bottom: 22px;
 }
 
 .mainLink:focus-visible {
@@ -76,6 +74,14 @@
 }
 
 .content {
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -118,6 +124,13 @@
   -webkit-box-orient: vertical;
 }
 
+.distanceText {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
 .meta {
   margin: 6px 0 0 0;
   display: grid;
@@ -144,33 +157,5 @@
   line-height: 1.4;
 }
 
-.distancePill {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
-  background: color-mix(in oklch, var(--muted) 34%, transparent);
-  color: color-mix(in oklch, var(--foreground) 78%, transparent);
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.distancePill:hover {
-  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
-  background: color-mix(in oklch, var(--primary) 9%, var(--card));
-  color: var(--foreground);
-}
-
-.distancePill:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
-    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
-}
+/* distance pill removed; distance now sits inline with title */
 

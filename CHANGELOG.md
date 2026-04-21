@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Artwork detail page **Nearby art** section (sorted by distance) with thumbnail tiles and distance pill.
+- Artwork detail page **Nearby art** section (sorted by distance) with thumbnail tiles; distance is shown inline with the title.
 - Geo helpers (`haversineDistanceKm`, `kmToMiles`) for computing “nearby” distances.
 - **`SiteBrandBar`** (`src/components/SiteBrandBar.tsx`) and **`src/lib/site.ts`** (`SITE_PRODUCT_NAME`, default metadata title template) so **Public Art Map** + Creative Waco logo stay consistent on **home**, **`/art/[slug]`**, **404**, and the **embed** artwork header link.
 - **View Transitions** (Next `experimental.viewTransition`) for **map home ↔ `/art/[slug]`** navigations, with **nav-forward** / **nav-back** CSS, shared **logo** `view-transition-name` anchor, and **Details** (list + map popup) / **← Map** / 404 back using `transitionTypes` on `Link` or `router.push`.

@@ -148,7 +148,14 @@ export default async function ArtPage({ params }: Props) {
                     </div>
 
                     <div className={nearbyStyles.content}>
-                      <p className={nearbyStyles.cardTitle}>{a.title}</p>
+                      <div className={nearbyStyles.titleRow}>
+                        <p className={nearbyStyles.cardTitle}>{a.title}</p>
+                        <span className={nearbyStyles.distanceText}>
+                          {miles < 10
+                            ? `${miles.toFixed(1)} mi`
+                            : `${Math.round(miles)} mi`}
+                        </span>
+                      </div>
                       <div className={nearbyStyles.meta}>
                         {(a.artist || a.year != null) && (
                           <div>
@@ -159,15 +166,6 @@ export default async function ArtPage({ params }: Props) {
                         )}
                       </div>
                     </div>
-                  </Link>
-
-                  <Link
-                    href={`/art/${a.slug}`}
-                    className={nearbyStyles.distancePill}
-                    aria-label={`View details (${miles < 10 ? miles.toFixed(1) : Math.round(miles)} miles away)`}
-                    transitionTypes={["nav-forward"]}
-                  >
-                    {miles < 10 ? `${miles.toFixed(1)} mi` : `${Math.round(miles)} mi`}
                   </Link>
                 </div>
               ))}
