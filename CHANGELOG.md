@@ -84,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `sitemap.xml` and `robots.txt` now default to `https://map.creativewaco.org` in production (avoids `localhost` URLs when `NEXT_PUBLIC_SITE_URL` is unset).
 - Add descriptive `alt` text to **Nearby art** thumbnails for better accessibility/SEO.
 - Document required `NEXT_PUBLIC_MAPBOX_TOKEN` env var on Vercel to avoid client-side Mapbox GL initialization errors (“This page couldn’t load”).
 - **Mobile map popup:** move the popup card further upward so the marker dot stays visible beneath it.

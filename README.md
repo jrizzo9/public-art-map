@@ -69,6 +69,10 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # CLOUDINARY_FOLDER="public-art-map"
 ```
 
+Notes:
+
+- `NEXT_PUBLIC_SITE_URL` is used to build absolute URLs (OpenGraph/Twitter images, canonical URLs, `robots.txt`, `sitemap.xml`). In production it falls back to `https://map.creativewaco.org` when unset (and on Vercel will also use `VERCEL_URL`).
+
 ## Admin + API
 
 - Admin status page: `http://localhost:3000/admin`
@@ -126,6 +130,23 @@ Visit `http://localhost:3000`.
 ## Scripts (image migration)
 
 These scripts help migrate externally-hosted images to Cloudinary. They require the Cloudinary env vars in `.env.local` (or your shell) and write CSV output files at the repo root.
+
+### Download Google Drive photos (requires login)
+
+Downloads private (non-public) Google Drive image links from your sheet by using OAuth (you’ll log in once; the token is cached locally).
+
+- Create a Google Cloud OAuth Client (**Desktop app**) and download the JSON to `scripts/google/credentials.json` (this repo ignores it).
+- Then run:
+
+```bash
+SHEET_ID="your-sheet-id" \
+SHEET_RANGE="Sheet1!A:Z" \
+IMAGE_COLUMN="Image URL" \
+TITLE_COLUMN="Title" \
+pnpm download:drive-photos
+```
+
+Output goes to `downloads/drive-photos/` and reruns skip already-downloaded files (tracked in `scripts/google/download-manifest.json`).
 
 ### MapHub → Cloudinary
 

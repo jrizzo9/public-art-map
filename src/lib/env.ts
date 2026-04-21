@@ -3,9 +3,28 @@ function optional(name: string): string | undefined {
   return value && value.trim() ? value : undefined;
 }
 
+function normalizeOrigin(raw: string): string {
+  // Keep only scheme + host (+ port). Also strips trailing slash.
+  try {
+    return new URL(raw).origin;
+  } catch {
+    // Allow passing bare domains like "map.creativewaco.org"
+    const withScheme = raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
+    return new URL(withScheme).origin;
+  }
+}
+
 export const env = {
   NEXT_PUBLIC_SITE_URL: () =>
-    optional("NEXT_PUBLIC_SITE_URL") ?? "http://localhost:3000",
+    normalizeOrigin(
+      optional("NEXT_PUBLIC_SITE_URL") ??
+        // Vercel provides VERCEL_URL as "<project>.vercel.app" (no scheme)
+        optional("VERCEL_URL") ??
+        // Fallback for production builds when env vars aren't set.
+        (process.env.NODE_ENV === "production"
+          ? "https://map.creativewaco.org"
+          : "http://localhost:3000"),
+    ),
   SHEET_CSV_URL: () => optional("SHEET_CSV_URL") ?? "",
   NEXT_PUBLIC_MAPBOX_TOKEN: () => optional("NEXT_PUBLIC_MAPBOX_TOKEN") ?? "",
   NEXT_PUBLIC_MAPBOX_STYLE_URL: () =>
