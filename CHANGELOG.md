@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show full artwork images (no crop) in the **detail panel**, **Nearby art** thumbnails, and the **map popup** preview.
+- Increase the **map popup** preview size, with responsive sizing on mobile to avoid overflow.
 - **Mobile home panel (bottom sheet):** reduce height from ~50% to ~30% of the viewport.
 - **Map popup preview:** show **Artist, Year** (when available) in the meta line instead of category/address.
 - **Branding copy:** visible product title is **Public Art Map** (replacing **Waco** in that label); browser titles use **`SITE_METADATA_DEFAULT_TITLE`** / **`SITE_METADATA_TITLE_TEMPLATE`** from `site.ts`.
@@ -57,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Document required `NEXT_PUBLIC_MAPBOX_TOKEN` env var on Vercel to avoid client-side Mapbox GL initialization errors (“This page couldn’t load”).
 - **Mobile map popup:** move the popup card further upward so the marker dot stays visible beneath it.
 - **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and use a **single smooth `flyTo`** with a vertical **`offset`** so the **popup card** (not just the marker) lands centered within the padded map chrome after selection.
 - Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
