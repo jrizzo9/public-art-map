@@ -50,5 +50,3 @@ export function markerColorForCategory(category: string | undefined): string {
   const idx = hashString(key) % PALETTE.length;
   return PALETTE[idx]!;
 }
-
-export const HIGHLIGHT_MARKER = "#ff4d2e";

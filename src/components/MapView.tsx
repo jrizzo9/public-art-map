@@ -4,7 +4,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
-import { HIGHLIGHT_MARKER, markerColorForCategory } from "@/lib/category-colors";
+import markerStyles from "@/components/MapMarker.module.css";
+import popupStyles from "@/components/MapPopup.module.css";
+import { markerColorForCategory } from "@/lib/category-colors";
 import type { Artwork } from "@/lib/sheet";
 
 /** Left column matches floating list panel (~340px) + edge breathing room; asymmetric vertical padding biases the focal point up/right. */
@@ -66,8 +68,11 @@ export function MapView({
   const ignoreNextMapClickRef = useRef(false);
   const onSelectSlugRef = useRef(onSelectSlug);
   const onClearSelectionRef = useRef(onClearSelection);
-  onSelectSlugRef.current = onSelectSlug;
-  onClearSelectionRef.current = onClearSelection;
+
+  useEffect(() => {
+    onSelectSlugRef.current = onSelectSlug;
+    onClearSelectionRef.current = onClearSelection;
+  }, [onSelectSlug, onClearSelection]);
 
   const bounds = useMemo(() => {
     const coords = artworks.map((a) => [a.lng, a.lat] as const);
@@ -131,13 +136,8 @@ export function MapView({
       el.type = "button";
       el.title = art.title;
       el.setAttribute("aria-label", art.title);
-      el.style.width = "14px";
-      el.style.height = "14px";
-      el.style.borderRadius = "999px";
-      el.style.border = "2px solid #0b0d12";
+      el.className = markerStyles.markerDot;
       el.style.background = markerColorForCategory(art.category);
-      el.style.boxShadow = "0 6px 18px rgba(0,0,0,0.2)";
-      el.style.cursor = "pointer";
       el.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -167,7 +167,7 @@ export function MapView({
       if (!el) continue;
       const isHighlighted = art.slug === (highlightSlug || selectedSlug);
       el.style.background = isHighlighted
-        ? HIGHLIGHT_MARKER
+        ? "var(--primary)"
         : markerColorForCategory(art.category);
     }
   }, [artworks, highlightSlug, selectedSlug]);
@@ -216,48 +216,31 @@ export function MapView({
     });
 
     const wrap = document.createElement("div");
-    wrap.style.width = "260px";
-    wrap.style.fontFamily = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
-    wrap.style.color = "#0b0d12";
+    wrap.className = popupStyles.popupRoot;
 
     const top = document.createElement("div");
-    top.style.display = "flex";
-    top.style.alignItems = "flex-start";
-    top.style.justifyContent = "space-between";
-    top.style.gap = "10px";
+    top.className = popupStyles.topRow;
 
     const title = document.createElement("div");
-    title.style.fontWeight = "700";
-    title.style.fontSize = "13px";
-    title.style.lineHeight = "1.2";
+    title.className = popupStyles.title;
     title.textContent = art.title;
 
     const close = document.createElement("button");
     close.type = "button";
     close.textContent = "×";
     close.setAttribute("aria-label", "Close preview");
-    close.style.border = "1px solid rgba(20,20,20,0.14)";
-    close.style.background = "rgba(255,255,255,0.9)";
-    close.style.borderRadius = "10px";
-    close.style.width = "28px";
-    close.style.height = "28px";
-    close.style.cursor = "pointer";
-    close.style.lineHeight = "1";
-    close.style.fontSize = "18px";
+    close.className = popupStyles.closeBtn;
     close.addEventListener("click", (e) => {
       e.stopPropagation();
       onClearSelectionRef.current?.();
     });
 
-    title.style.paddingTop = "2px";
     top.appendChild(title);
     top.appendChild(close);
     wrap.appendChild(top);
 
     const meta = document.createElement("div");
-    meta.style.marginTop = "6px";
-    meta.style.fontSize = "12px";
-    meta.style.color = "rgba(17,23,38,0.7)";
+    meta.className = popupStyles.meta;
     meta.textContent =
       (art.category ?? "Artwork") + (art.address ? ` · ${art.address}` : "");
     wrap.appendChild(meta);
@@ -267,36 +250,23 @@ export function MapView({
       img.src = art.image;
       img.alt = art.title;
       img.loading = "lazy";
-      img.style.display = "block";
-      img.style.width = "100%";
-      img.style.height = "140px";
-      img.style.objectFit = "cover";
-      img.style.marginTop = "10px";
-      img.style.borderRadius = "12px";
-      img.style.border = "1px solid rgba(20,20,20,0.12)";
+      img.className = popupStyles.image;
       wrap.appendChild(img);
     }
 
     const links = document.createElement("div");
-    links.style.display = "flex";
-    links.style.gap = "10px";
-    links.style.flexWrap = "wrap";
-    links.style.marginTop = "10px";
+    links.className = popupStyles.links;
 
     const details = document.createElement("a");
     details.href = `/art/${art.slug}`;
     details.textContent = "Details →";
-    details.style.fontSize = "12px";
-    details.style.textDecoration = "underline";
-    details.style.color = "rgba(17,23,38,0.92)";
+    details.className = popupStyles.link;
     details.addEventListener("click", (e) => e.stopPropagation());
 
     const embed = document.createElement("a");
     embed.href = `/embed/art/${art.slug}`;
     embed.textContent = "Embed →";
-    embed.style.fontSize = "12px";
-    embed.style.textDecoration = "underline";
-    embed.style.color = "rgba(17,23,38,0.92)";
+    embed.className = popupStyles.link;
     embed.addEventListener("click", (e) => e.stopPropagation());
 
     links.appendChild(details);
@@ -308,9 +278,7 @@ export function MapView({
       ext.rel = "noopener noreferrer";
       ext.target = "_blank";
       ext.textContent = "Website →";
-      ext.style.fontSize = "12px";
-      ext.style.textDecoration = "underline";
-      ext.style.color = "rgba(17,23,38,0.92)";
+      ext.className = popupStyles.link;
       ext.addEventListener("click", (e) => e.stopPropagation());
       links.appendChild(ext);
     }

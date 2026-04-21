@@ -9,6 +9,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 
 ## UI notes
 
+- **Theming:** the app uses **Tailwind CSS v4**, **shadcn/ui** primitives, and a shared **semantic palette** (CSS variables in `src/app/globals.css`) so the floating panel, detail pages, embed shell, and Mapbox-built popup/marker chrome stay visually consistent.
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~half the viewport) for the panel (collapsible **Filters** + artwork list); selecting an artwork flies the marker to about the **middle of the clear map** (slightly below center) so the popup can sit **above** the dot with map context underneath.
 - **Filters:** category (colors match map markers), commission, and optional **year** range—expand **Filters** to change what appears on the map and in the list. The whole panel scrolls as **one** column (including the **Showing X of Y** footer).
@@ -81,7 +82,7 @@ Visit `http://localhost:3000`.
 ## Troubleshooting
 
 - **Build error about two pages resolving to the same path**: ensure there is only one route for each path (for example, don’t keep a parallel route group like `/(site)` defining `art/[slug]` alongside `src/app/art/[slug]`).
-- **Build error about `@tailwindcss/postcss` missing**: remove `postcss.config.*` if you’re not using Tailwind, or add the missing dependency if you are.
+- **Build error about `@tailwindcss/postcss` missing**: run `pnpm install` so `tailwindcss`, `@tailwindcss/postcss`, and `postcss` are present; keep `postcss.config.mjs` at the repo root (Tailwind v4 uses the PostCSS plugin).
 
 ## Deploy (Vercel)
 

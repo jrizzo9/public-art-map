@@ -29,7 +29,7 @@ export default async function EmbedArtPage({ params }: Props) {
   if (!artwork) notFound();
 
   return (
-    <main style={{ padding: 12 }}>
+    <main className="p-3 md:p-4">
       <ArtworkDetail artwork={artwork} variant="embed" />
     </main>
   );

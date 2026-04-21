@@ -1,0 +1,9 @@
+.markerDot {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border-radius: 999px;
+  border: 2px solid var(--foreground);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+}

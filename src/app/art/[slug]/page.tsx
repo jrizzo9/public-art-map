@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { env } from "@/lib/env";
 import { getArtworkBySlug } from "@/lib/sheet";
@@ -35,11 +36,14 @@ export default async function ArtPage({ params }: Props) {
   if (!artwork) notFound();
 
   return (
-    <main style={{ padding: 18, maxWidth: 860, margin: "0 auto" }}>
-      <p style={{ marginBottom: 12 }}>
-        <a href="/" style={{ textDecoration: "underline" }}>
+    <main className="mx-auto max-w-[860px] bg-background px-4 py-6 md:px-6 md:py-8">
+      <p className="mb-4">
+        <Link
+          href="/"
+          className="text-primary underline underline-offset-4 hover:opacity-90"
+        >
           ← Back to map
-        </a>
+        </Link>
       </p>
       <ArtworkDetail artwork={artwork} variant="full" />
     </main>
