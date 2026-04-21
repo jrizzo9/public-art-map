@@ -10,8 +10,9 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 ## UI notes
 
 - The map is **fullscreen**.
-- The left panel **floats over the map**.
-- Clicking a list item **opens an in-panel preview** (image + links) instead of navigating immediately.
+- The left panel **floats over the map** (vertically centered, compact).
+- Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** with title, optional image, and links to details/embed.
+- Click empty map area to clear the popup selection.
 
 ## Sheet contract (columns)
 

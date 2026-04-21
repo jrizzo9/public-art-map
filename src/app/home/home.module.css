@@ -11,22 +11,23 @@
 
 .h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1.1;
 }
 
 .sub {
-  margin: 8px 0 0 0;
+  margin: 6px 0 0 0;
   color: rgba(17, 23, 38, 0.78);
   max-width: 55ch;
+  font-size: 12px;
 }
 
 .panel {
   position: fixed;
-  top: 12px;
+  top: 50%;
   left: 12px;
-  bottom: 12px;
   width: min(340px, calc(100vw - 36px));
+  max-height: min(560px, calc(100vh - 24px));
   border-radius: 18px;
   border: 1px solid rgba(20, 20, 20, 0.12);
   background: rgba(255, 255, 255, 0.88);
@@ -34,14 +35,28 @@
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.22);
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr;
   z-index: 2;
+  transform: translateY(-50%);
 }
 
 .header {
   display: grid;
-  gap: 14px;
-  padding: 12px 12px 0 12px;
+  gap: 10px;
+  padding: 10px 10px 0 10px;
+}
+
+.headerTop {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+}
+
+.panelBody {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
 }
 
 .search {
@@ -50,8 +65,8 @@
 
 .label {
   display: block;
-  font-size: 12px;
-  margin-bottom: 6px;
+  font-size: 11px;
+  margin-bottom: 5px;
   color: rgba(17, 23, 38, 0.6);
 }
 
@@ -61,8 +76,10 @@
   border: 1px solid rgba(20, 20, 20, 0.14);
   background: rgba(255, 255, 255, 0.75);
   color: #111726;
-  padding: 10px 10px;
+  padding: 9px 10px;
   outline: none;
+  font-size: 13px;
+  margin-bottom: 8px;
 }
 
 .input:focus {
@@ -72,17 +89,18 @@
 
 .count {
   margin: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-top: 1px solid rgba(20, 20, 20, 0.08);
   border-bottom: 1px solid rgba(20, 20, 20, 0.08);
   color: rgba(17, 23, 38, 0.72);
+  font-size: 12px;
 }
 
 .preview {
-  padding: 10px 12px 12px 12px;
+  padding: 8px 10px 10px 10px;
   border-bottom: 1px solid rgba(20, 20, 20, 0.08);
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .previewTop {
@@ -130,7 +148,7 @@
 .previewImageWrap {
   position: relative;
   width: 100%;
-  height: 170px;
+  height: 140px;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(20, 20, 20, 0.1);
@@ -175,7 +193,7 @@
 
 .item {
   display: block;
-  padding: 10px 12px;
+  padding: 8px 10px;
   color: inherit;
   text-decoration: none;
   width: 100%;
@@ -205,9 +223,9 @@
   .panel {
     left: 10px;
     width: min(340px, calc(100vw - 24px));
-    top: 10px;
-    bottom: auto;
-    max-height: calc(100vh - 20px);
+    top: 50%;
+    max-height: min(520px, calc(100vh - 20px));
+    transform: translateY(-50%);
   }
   .ul {
     max-height: none;

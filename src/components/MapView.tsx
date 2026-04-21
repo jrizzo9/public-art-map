@@ -11,6 +11,7 @@ type Props = {
   selectedSlug?: string;
   highlightSlug?: string;
   onSelectSlug?: (slug: string) => void;
+  onClearSelection?: () => void;
   styleUrl?: string;
 };
 
@@ -19,11 +20,16 @@ export function MapView({
   selectedSlug,
   highlightSlug,
   onSelectSlug,
+  onClearSelection,
   styleUrl,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const markerBySlugRef = useRef(new Map<string, mapboxgl.Marker>());
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const didFitBoundsRef = useRef(false);
+  const ignoreNextMapClickRef = useRef(false);
 
   const bounds = useMemo(() => {
     const coords = artworks.map((a) => [a.lng, a.lat] as const);
@@ -69,6 +75,8 @@ export function MapView({
 
     for (const m of markersRef.current) m.remove();
     markersRef.current = [];
+    markerBySlugRef.current.clear();
+    didFitBoundsRef.current = false;
 
     for (const art of artworks) {
       const el = document.createElement("button");
@@ -79,29 +87,180 @@ export function MapView({
       el.style.height = "14px";
       el.style.borderRadius = "999px";
       el.style.border = "2px solid #0b0d12";
-      const isHighlighted = art.slug === (highlightSlug || selectedSlug);
-      el.style.background = isHighlighted ? "#ff4d2e" : "#ffd02e";
+      el.style.background = "#ffd02e";
       el.style.boxShadow = "0 6px 18px rgba(0,0,0,0.2)";
       el.style.cursor = "pointer";
-      el.addEventListener("click", () => onSelectSlug?.(art.slug));
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Mapbox will still emit a map click in some cases; ignore the next one.
+        ignoreNextMapClickRef.current = true;
+        onSelectSlug?.(art.slug);
+      });
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([art.lng, art.lat])
         .addTo(map);
       markersRef.current.push(marker);
+      markerBySlugRef.current.set(art.slug, marker);
     }
 
     if (bounds) {
       map.fitBounds(bounds, { padding: 60, duration: 0, maxZoom: 15 });
+      didFitBoundsRef.current = true;
     }
-  }, [artworks, bounds, highlightSlug, onSelectSlug, selectedSlug]);
+  }, [artworks, bounds, onSelectSlug]);
+
+  useEffect(() => {
+    for (const art of artworks) {
+      const marker = markerBySlugRef.current.get(art.slug);
+      const el = marker?.getElement() as HTMLElement | undefined;
+      if (!el) continue;
+      const isHighlighted = art.slug === (highlightSlug || selectedSlug);
+      el.style.background = isHighlighted ? "#ff4d2e" : "#ffd02e";
+    }
+  }, [artworks, highlightSlug, selectedSlug]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedSlug) return;
+    if (!map) return;
+
+    const onMapClick = (e: mapboxgl.MapMouseEvent) => {
+      if (ignoreNextMapClickRef.current) {
+        ignoreNextMapClickRef.current = false;
+        return;
+      }
+
+      const target = e.originalEvent?.target as HTMLElement | null;
+      if (target?.closest(".mapboxgl-marker, .mapboxgl-popup")) return;
+
+      onClearSelection?.();
+    };
+    map.on("click", onMapClick);
+    return () => {
+      map.off("click", onMapClick);
+    };
+  }, [onClearSelection]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    popupRef.current?.remove();
+    popupRef.current = null;
+
+    if (!selectedSlug) return;
     const art = artworks.find((a) => a.slug === selectedSlug);
     if (!art) return;
-    map.flyTo({ center: [art.lng, art.lat], zoom: Math.max(map.getZoom(), 14) });
+
+    // Fly directly to the selection (avoid any "reset to bounds" first).
+    map.flyTo({
+      center: [art.lng, art.lat],
+      zoom: Math.max(map.getZoom(), 14),
+      essential: true,
+      duration: 900,
+      curve: 1.5,
+    });
+
+    const wrap = document.createElement("div");
+    wrap.style.width = "260px";
+    wrap.style.fontFamily = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+    wrap.style.color = "#0b0d12";
+
+    const top = document.createElement("div");
+    top.style.display = "flex";
+    top.style.alignItems = "flex-start";
+    top.style.justifyContent = "space-between";
+    top.style.gap = "10px";
+
+    const title = document.createElement("div");
+    title.style.fontWeight = "700";
+    title.style.fontSize = "13px";
+    title.style.lineHeight = "1.2";
+    title.textContent = art.title;
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Close preview");
+    close.style.border = "1px solid rgba(20,20,20,0.14)";
+    close.style.background = "rgba(255,255,255,0.9)";
+    close.style.borderRadius = "10px";
+    close.style.width = "28px";
+    close.style.height = "28px";
+    close.style.cursor = "pointer";
+    close.style.lineHeight = "1";
+    close.style.fontSize = "18px";
+    close.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onClearSelection?.();
+    });
+
+    title.style.paddingTop = "2px";
+    top.appendChild(title);
+    top.appendChild(close);
+    wrap.appendChild(top);
+
+    const meta = document.createElement("div");
+    meta.style.marginTop = "6px";
+    meta.style.fontSize = "12px";
+    meta.style.color = "rgba(17,23,38,0.7)";
+    meta.textContent =
+      (art.category ?? "Artwork") + (art.address ? ` · ${art.address}` : "");
+    wrap.appendChild(meta);
+
+    if (art.image) {
+      const img = document.createElement("img");
+      img.src = art.image;
+      img.alt = art.title;
+      img.loading = "lazy";
+      img.style.display = "block";
+      img.style.width = "100%";
+      img.style.height = "140px";
+      img.style.objectFit = "cover";
+      img.style.marginTop = "10px";
+      img.style.borderRadius = "12px";
+      img.style.border = "1px solid rgba(20,20,20,0.12)";
+      wrap.appendChild(img);
+    }
+
+    const links = document.createElement("div");
+    links.style.display = "flex";
+    links.style.gap = "10px";
+    links.style.flexWrap = "wrap";
+    links.style.marginTop = "10px";
+
+    const details = document.createElement("a");
+    details.href = `/art/${art.slug}`;
+    details.textContent = "Details →";
+    details.style.fontSize = "12px";
+    details.style.textDecoration = "underline";
+    details.style.color = "rgba(17,23,38,0.92)";
+    details.addEventListener("click", (e) => e.stopPropagation());
+
+    const embed = document.createElement("a");
+    embed.href = `/embed/art/${art.slug}`;
+    embed.textContent = "Embed →";
+    embed.style.fontSize = "12px";
+    embed.style.textDecoration = "underline";
+    embed.style.color = "rgba(17,23,38,0.92)";
+    embed.addEventListener("click", (e) => e.stopPropagation());
+
+    links.appendChild(details);
+    links.appendChild(embed);
+    wrap.appendChild(links);
+
+    const popup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      maxWidth: "280px",
+      offset: 18,
+    })
+      .setLngLat([art.lng, art.lat])
+      .setDOMContent(wrap)
+      .addTo(map);
+
+    popupRef.current = popup;
   }, [artworks, selectedSlug]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
