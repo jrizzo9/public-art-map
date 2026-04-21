@@ -14,6 +14,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily" as const,
       priority: 1,
     },
+    {
+      url: new URL("/art", baseUrl).toString(),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
     ...artworks.map((a) => ({
       url: new URL(`/art/${a.slug}`, baseUrl).toString(),
       lastModified: now,

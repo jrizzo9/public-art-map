@@ -2,6 +2,7 @@
 
 Next.js app that renders:
 - **Full map experience** at `/`
+- **Artwork directory** at `/art` (search + category filter + sort)
 - **SEO detail pages** at `/art/[slug]`
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 

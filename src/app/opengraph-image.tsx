@@ -1,11 +1,21 @@
 import { ImageResponse } from "next/og";
 import { SITE_ORG_NAME, SITE_PRODUCT_NAME } from "@/lib/site";
+import { env } from "@/lib/env";
 
 export const alt = `${SITE_PRODUCT_NAME} — ${SITE_ORG_NAME}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function Image() {
+  const siteUrl = env.NEXT_PUBLIC_SITE_URL();
+  const hostname = (() => {
+    try {
+      return new URL(siteUrl).hostname;
+    } catch {
+      return siteUrl;
+    }
+  })();
+
   return new ImageResponse(
     (
       <div
@@ -32,7 +42,7 @@ export default function Image() {
             Explore public art in Waco
           </div>
         </div>
-        <div style={{ fontSize: 20, opacity: 0.72 }}>map.creativewaco.org</div>
+        <div style={{ fontSize: 20, opacity: 0.72 }}>{hostname}</div>
       </div>
     ),
     size,

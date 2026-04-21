@@ -129,6 +129,10 @@
   padding: 10px 10px 16px 10px;
 }
 
+.panelInnerIndex {
+  padding: 16px 16px 22px 16px;
+}
+
 .nearbyWrap {
   position: relative;
   z-index: 2;

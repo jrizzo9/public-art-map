@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Artwork directory page at `/art` with search, category filtering, and sorting.
+- Add `/art` to `sitemap.xml`.
 - Cloudinary admin at `/admin`:
   - Upload images (HEIC/PNG/JPG) with auto-rotate, resize, and JPEG conversion, then upload to Cloudinary.
   - Browse a Cloudinary “library” grid and click an item to copy its URL.
@@ -47,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- OpenGraph and Twitter images now render the hostname from `NEXT_PUBLIC_SITE_URL` (instead of a hardcoded domain).
 - Admin `/admin` page now focuses on Cloudinary (uploader + library) instead of sheet editing/status checks.
 - Update one MapHub source URL to the smaller `544_400` variant.
 - Stop treating the sheet `id` column as a slug source (only use `slug`, otherwise derive from `title`).
