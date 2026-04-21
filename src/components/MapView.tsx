@@ -10,6 +10,9 @@ import type { Artwork } from "@/lib/sheet";
 const PANEL_RESERVE_PX = 340;
 const PANEL_GUTTER_PX = 28;
 
+/** Bottom sheet ~50% height on narrow viewports — matches `.panel` mobile styles in `home.module.css`. */
+const MOBILE_SHEET_HEIGHT_RATIO = 0.5;
+
 function selectionFlyPadding(map: mapboxgl.Map) {
   const { width: w, height: h } = map.getContainer().getBoundingClientRect();
   if (!w || !h) {
@@ -17,11 +20,17 @@ function selectionFlyPadding(map: mapboxgl.Map) {
   }
 
   const isNarrow = w < 640;
-  const minPanelReserve = PANEL_RESERVE_PX + PANEL_GUTTER_PX + 16;
-  const left = isNarrow
-    ? Math.max(12, Math.round(w * 0.04))
-    : Math.round(Math.min(Math.max(minPanelReserve, w * 0.34), w - 140));
 
+  if (isNarrow) {
+    // Reserve the bottom half for the floating sheet so the marker sits centered in the top half.
+    const bottom = Math.round(h * MOBILE_SHEET_HEIGHT_RATIO);
+    const top = Math.max(8, Math.round(h * 0.03));
+    const side = Math.max(12, Math.round(w * 0.04));
+    return { top, right: side, bottom, left: side };
+  }
+
+  const minPanelReserve = PANEL_RESERVE_PX + PANEL_GUTTER_PX + 16;
+  const left = Math.round(Math.min(Math.max(minPanelReserve, w * 0.34), w - 140));
   const top = Math.round(h * 0.06);
   const bottom = Math.round(h * 0.2);
   const right = Math.min(56, Math.round(w * 0.04));

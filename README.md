@@ -10,7 +10,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 ## UI notes
 
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
-- **Mobile (narrow viewports):** **split layout** — map occupies the **top half** of the screen and the list panel occupies the **bottom half** (no overlay).
+- **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~half the viewport) for search and the list; selecting an artwork centers the marker in the **visible map above the sheet**.
 - Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** with title, optional image, and links to details/embed.
 - Click empty map area to clear the popup selection.
 
