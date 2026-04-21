@@ -1,4 +1,4 @@
-/** Stored next to submission photos as a Cloudinary raw asset (`submission.json`). */
+/** In-memory shape used at finalize before appending a row to the Submissions sheet. */
 export type SubmissionBundleMetadata = {
   submissionId: string;
   submittedAt: string;
@@ -21,4 +21,20 @@ export type SubmissionBundleMetadata = {
     bytes?: number;
     format?: string;
   }>;
+};
+
+/** Row shown on `/admin` — sourced from the Google Sheet Submissions tab. */
+export type ListedSubmission = {
+  id: string;
+  submittedAt: string;
+  email: string;
+  title: string;
+  description: string;
+  artist?: string;
+  year?: string;
+  address?: string;
+  category?: string;
+  phone?: string;
+  artworkUrl?: string;
+  photos: SubmissionBundleMetadata["photos"];
 };

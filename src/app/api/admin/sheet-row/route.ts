@@ -39,25 +39,8 @@ function toSheetPatch(raw: Record<string, unknown>): SheetPatch {
   return out;
 }
 
+/** No request-level secret: protect this route at your host (e.g. Vercel deployment protection) if exposed publicly. */
 export async function POST(request: Request) {
-  const adminSecret = env.ADMIN_SHEET_SECRET().trim();
-  if (!adminSecret) {
-    return jsonError(
-      "Admin sheet updates require ADMIN_SHEET_SECRET (Bearer or x-admin-sheet-secret).",
-      503,
-    );
-  }
-
-  const authHeader = request.headers.get("authorization");
-  const bearer =
-    authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-  const headerSecret = request.headers.get("x-admin-sheet-secret")?.trim();
-  const incoming = bearer || headerSecret || "";
-
-  if (incoming !== adminSecret) {
-    return jsonError("Unauthorized.", 401);
-  }
-
   const appsScript =
     Boolean(env.SHEET_EDIT_API_URL().trim()) &&
     Boolean(env.SHEET_EDIT_API_TOKEN().trim());

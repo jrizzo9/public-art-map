@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { uploadSubmissionMetadataJson } from "@/lib/cloudinary";
+import {
+  appendSubmissionBundleRow,
+  isSubmissionSheetAppendConfigured,
+} from "@/lib/google-sheets-submissions";
 import { verifySubmissionToken } from "@/lib/submission-token";
 import type { SubmissionBundleMetadata } from "@/lib/submissions-types";
 import { submissionFolderFor } from "@/lib/submissions-admin";
@@ -88,13 +91,18 @@ export async function POST(request: Request) {
     })),
   };
 
+  if (!isSubmissionSheetAppendConfigured()) {
+    return jsonError(
+      "Submissions storage is not configured (set SHEET_ID and GOOGLE_SERVICE_ACCOUNT_JSON, and add a Submissions tab with headers).",
+      503,
+    );
+  }
+
   try {
-    await uploadSubmissionMetadataJson({
-      submissionFolder: folder,
-      jsonText: JSON.stringify(bundle, null, 2),
-    });
+    await appendSubmissionBundleRow(bundle);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to save submission.";
+    const msg = e instanceof Error ? e.message : "Could not save submission.";
+    console.error("[submissions/finalize] Google Sheet append failed:", e);
     return jsonError(msg, 500);
   }
 

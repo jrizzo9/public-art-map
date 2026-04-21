@@ -60,11 +60,12 @@ export const env = {
    */
   SHEET_ADMIN_RANGE: () =>
     optional("SHEET_ADMIN_RANGE") ?? "'Live Sheet'!A:Z",
+  /** Tab/range for public submission rows (`append` after finalize). Header row required. */
+  SHEET_SUBMISSIONS_RANGE: () =>
+    optional("SHEET_SUBMISSIONS_RANGE") ?? "'Submissions'!A:Z",
   /** Full JSON for a Google Cloud service account that has Editor access to the sheet. */
   GOOGLE_SERVICE_ACCOUNT_JSON: () =>
     optional("GOOGLE_SERVICE_ACCOUNT_JSON") ?? "",
-  /** Shared secret for `POST /api/admin/sheet-row` (Bearer or x-admin-sheet-secret). */
-  ADMIN_SHEET_SECRET: () => optional("ADMIN_SHEET_SECRET") ?? "",
   /** Google Apps Script Web App URL for sheet row updates (preferred when set). */
   SHEET_EDIT_API_URL: () => optional("SHEET_EDIT_API_URL") ?? "",
   /** Token your Apps Script validates (sent only server-side in the POST body). */

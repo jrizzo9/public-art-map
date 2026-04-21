@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Google Sheet **Submissions** tab: append submission rows on finalize (`src/lib/google-sheets-submissions.ts`), optional `SHEET_SUBMISSIONS_RANGE`, and `scripts/submissions-sheet-header-row.csv` for the header row template.
+- Admin **Public submissions** reads completed submissions from that sheet tab (Google Sheets API) instead of Cloudinary metadata files.
 - Artwork directory page at `/art` with search, category filtering, and sorting.
 - Add `/art` to `sitemap.xml`.
-- Public **submit** flow at `/submit` with `POST /api/submissions/prepare` and `POST /api/submissions/finalize` (Cloudinary-backed photo bundles).
-- Admin `/admin`: **Public submissions** (recent bundles from Cloudinary), **Edit map info** UI scaffold (artwork list + fields; location is **address** or **latitude/longitude**, not both), with **stacked** full-width sections at all breakpoints.
-- `POST /api/admin/sheet-row` for optional authenticated Google Sheet row patches (Apps Script web app or Google Sheets API + `ADMIN_SHEET_SECRET`; see `.env.example`).
+- Public **submit** flow at `/submit` with `POST /api/submissions/prepare` and `POST /api/submissions/finalize` (Cloudinary photo uploads + Google Sheet row for metadata when Sheets API env is configured).
+- Admin `/admin`: **Public submissions** (sheet-backed when configured), **Edit map info** (collapsible artwork list, dense form, image preview + replace via `POST /api/admin/cloudinary`; location is **address** or **latitude/longitude**, not both), with **stacked** full-width sections at all breakpoints.
+- `POST /api/admin/sheet-row` for optional Google Sheet row patches (Apps Script web app or Google Sheets API; no caller secret — see `.env.example`).
 - pnpm scripts: `download:drive-photos`, `images:web-ready`, `cloudinary:upload-web-ready`, `cloudinary:upload-and-update-sheet`, `cloudinary:order-csv-like-public-sheet`.
 - Cloudinary admin endpoints:
   - `POST /api/admin/cloudinary` (convert + upload)
@@ -50,6 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public submission **finalize** persists metadata to the **Submissions** Google Sheet (requires `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON`); Cloudinary stores **photos only** (no `submission.json` raw asset).
+- **Edit map info** admin UI: collapsible artwork picker (closed by default), tighter layout, and slug-based **Replace image** uploads.
+- `POST /api/admin/sheet-row` no longer requires `ADMIN_SHEET_SECRET` (still protect publicly exposed deployments at the host).
 - OpenGraph and Twitter images now render the hostname from `NEXT_PUBLIC_SITE_URL` (instead of a hardcoded domain).
 - Admin `/admin` replaces the in-page Cloudinary **uploader** and **library grid** with **public submissions** + an **edit map info** scaffold (sheet writes still go through `POST /api/admin/sheet-row` when configured).
 - Update one MapHub source URL to the smaller `544_400` variant.
@@ -79,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- Server-side Cloudinary upload of submission bundle **`submission.json`** (`uploadSubmissionMetadataJson`); submission records live in Google Sheets instead.
 - **In-admin** Cloudinary **ImageUploader** and **CloudinaryLibrary** UI (upload + browse grid on `/admin`); server routes `POST /api/admin/cloudinary` and `GET /api/admin/cloudinary/library` remain for scripts and integrations.
 - Apps Script–based live Google Sheet editing from `/admin`.
 - **Map popup preview:** remove the **Embed →** link (embed routes still exist for Webflow iframes).
@@ -86,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Cloudinary **signed upload** parameters for browser-direct `image/upload` and server `raw`/`image` uploads align with Cloudinary’s signature verification (omit `resource_type` from the signed parameter set for those endpoints).
 - `sitemap.xml` and `robots.txt` now default to `https://map.creativewaco.org` in production (avoids `localhost` URLs when `NEXT_PUBLIC_SITE_URL` is unset).
 - Add descriptive `alt` text to **Nearby art** thumbnails for better accessibility/SEO.
 - Document required `NEXT_PUBLIC_MAPBOX_TOKEN` env var on Vercel to avoid client-side Mapbox GL initialization errors (“This page couldn’t load”).

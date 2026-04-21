@@ -69,8 +69,11 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # CLOUDINARY_API_SECRET="..."
 # CLOUDINARY_FOLDER="public-art-map"
 
-# Optional: authenticated sheet row patches (POST /api/admin/sheet-row)
-# See .env.example for Apps Script vs service-account options + ADMIN_SHEET_SECRET.
+# Public submissions (/submit): SUBMISSIONS_PREPARE_SECRET; Cloudinary vars for direct photo uploads;
+# SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON + Submissions tab (see scripts/submissions-sheet-header-row.csv).
+# Optional: SHEET_SUBMISSIONS_RANGE='Submissions'!A:Z
+
+# Optional: sheet row patches (POST /api/admin/sheet-row) — see .env.example (no request secret; protect the deployment if the URL is public).
 ```
 
 Notes:
@@ -79,12 +82,12 @@ Notes:
 
 ## Admin + API
 
-- Admin page: `http://localhost:3000/admin` — **Public submissions** (recent Cloudinary-backed bundles) and **Edit map info** (UI scaffold for picking an artwork and editing fields; persistence wiring is optional via sheet API below).
-- Submit flow: `http://localhost:3000/submit` — uses `POST /api/submissions/prepare` and `POST /api/submissions/finalize` (requires Cloudinary env vars server-side).
+- Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Edit map info** (collapsible artwork picker, field editor, optional **Replace image** upload via `POST /api/admin/cloudinary`; saves through `POST /api/admin/sheet-row` when sheet updates are configured).
+- Submit flow: `http://localhost:3000/submit` — `POST /api/submissions/prepare` returns signed Cloudinary upload slots; `POST /api/submissions/finalize` verifies uploads and **appends a row** to the **Submissions** sheet (requires `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and a header row—see `scripts/submissions-sheet-header-row.csv`). Photos live in Cloudinary only; submission text and image URLs are stored in the sheet.
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
-- Optional sheet updates: `POST /api/admin/sheet-row` (Bearer or `x-admin-sheet-secret` with `ADMIN_SHEET_SECRET`; configure Apps Script URL + token **or** Google Sheets API per `.env.example`).
+- Optional sheet updates: `POST /api/admin/sheet-row` (no request auth; configure Apps Script URL + token **or** Google Sheets API per `.env.example` — protect the route at the host if the app is public).
 
 ### Cloudinary server routes (scripts + integrations)
 

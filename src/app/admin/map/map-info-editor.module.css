@@ -1,7 +1,7 @@
 .editorShell {
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(240px, 340px) 1fr;
+  gap: 10px;
+  grid-template-columns: minmax(200px, 280px) 1fr;
   align-items: start;
 }
 
@@ -13,25 +13,43 @@
 
 .formFields {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+.formRow2 {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .formRow2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.fieldWrap {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .fieldLabel {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  opacity: 0.8;
+  opacity: 0.78;
 }
 
 .sectionLabel {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   opacity: 0.85;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .locationBlock {
-  padding: 12px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
   background: color-mix(in oklch, var(--muted) 28%, transparent);
 }
@@ -50,9 +68,9 @@
   appearance: none;
   border: none;
   cursor: pointer;
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
   font-weight: 750;
   color: color-mix(in oklch, var(--foreground) 82%, transparent);
   background: transparent;
@@ -69,9 +87,9 @@
 }
 
 .locationHint {
-  margin: 10px 0 0;
-  font-size: 12px;
-  opacity: 0.75;
+  margin: 6px 0 0;
+  font-size: 11px;
+  opacity: 0.72;
 }
 
 .coordsRow {
@@ -88,14 +106,332 @@
 
 .inputBase {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 7px 10px;
+  border-radius: 10px;
   border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
   background: color-mix(in oklch, var(--card) 88%, transparent);
   color: var(--foreground);
+  font-size: 13px;
+  font-family: inherit;
 }
 
 .textareaBase {
+  min-height: 72px;
   resize: vertical;
-  min-height: 96px;
+}
+
+.slugReadonly {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 22%, transparent);
+  font-size: 13px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.saveBtn {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--primary) 42%, var(--border));
+  background: color-mix(in oklch, var(--primary) 18%, var(--card));
+  color: var(--foreground);
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.saveBtn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--primary) 28%, var(--card));
+}
+
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.resetBtn {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 42%, transparent);
+  color: var(--foreground);
+  font-weight: 700;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.resetBtn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 58%, transparent);
+}
+
+.resetBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.statusOk {
+  margin: 0;
+  font-size: 13px;
+  color: color-mix(in oklch, var(--foreground) 78%, oklch(0.55 0.15 145));
+}
+
+.statusErr {
+  margin: 0;
+  font-size: 13px;
+  color: color-mix(in oklch, var(--destructive) 85%, var(--foreground));
+}
+
+.statusMuted {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.listAside {
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklch, var(--muted) 22%, transparent);
+  overflow: hidden;
+}
+
+.listAsideBar {
+  padding: 6px 8px;
+}
+
+.listToggleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+  background: color-mix(in oklch, var(--card) 80%, transparent);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.listToggleBtn:hover {
+  background: color-mix(in oklch, var(--card) 65%, var(--muted));
+}
+
+.listToggleLabel {
+  font-size: 12px;
+  font-weight: 750;
+  flex-shrink: 0;
+}
+
+.listToggleMeta {
+  font-size: 11px;
+  opacity: 0.72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  text-align: right;
+}
+
+.listSearch {
+  padding: 8px 10px;
+  border-top: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+}
+
+.listScroll {
+  display: grid;
+  padding: 6px;
+  gap: 4px;
+  max-height: min(260px, 42vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.listBtn {
+  text-align: left;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+  background: color-mix(in oklch, var(--card) 80%, transparent);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.listBtn[data-active="true"] {
+  border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
+
+.listTitle {
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listMeta {
+  font-size: 11px;
+  opacity: 0.72;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editorPanel {
+  display: grid;
+  gap: 8px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+  padding: 10px;
+}
+
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.editorTitleBlock {
+  display: grid;
+  gap: 2px;
+}
+
+.editorLabel {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
+.editorSelectedTitle {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.emptyState {
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.imageUrlField {
+  display: grid;
+  gap: 6px;
+}
+
+.imagePreviewRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.imagePreviewFrame {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imagePreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.imagePreviewEmpty {
+  font-size: 11px;
+  opacity: 0.65;
+  text-align: center;
+  padding: 8px;
+  line-height: 1.35;
+}
+
+.imagePreviewBroken {
+  font-size: 11px;
+  opacity: 0.75;
+  padding: 8px;
+  text-align: center;
+}
+
+.imageUrlActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.replaceImageBtn {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 42%, transparent);
+  color: var(--foreground);
+  font-weight: 650;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.replaceImageBtn:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 58%, transparent);
+}
+
+.replaceImageBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.uploadErr {
+  margin: 0;
+  font-size: 11px;
+  color: color-mix(in oklch, var(--destructive) 85%, var(--foreground));
+  max-width: 220px;
+}
+
+.visuallyHiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

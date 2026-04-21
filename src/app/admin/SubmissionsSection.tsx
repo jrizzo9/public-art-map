@@ -1,9 +1,9 @@
 import Image from "next/image";
-import { listSubmissionsFromCloudinary } from "@/lib/submissions-admin";
+import { listSubmissionsForAdmin } from "@/lib/submissions-admin";
 import styles from "./admin.module.css";
 
 export async function SubmissionsSection() {
-  const result = await listSubmissionsFromCloudinary();
+  const result = await listSubmissionsForAdmin();
 
   if ("error" in result) {
     return (
@@ -33,7 +33,7 @@ export async function SubmissionsSection() {
       <div className={styles.cardBody}>
         {submissions.length === 0 ? (
           <p className={styles.muted} style={{ margin: 0 }}>
-            No completed submissions in Cloudinary yet (raw index up to ~200 bundle files).
+            No rows in the Submissions sheet yet (or headers / credentials are missing).
           </p>
         ) : (
           <div className={styles.submissions}>
@@ -107,7 +107,7 @@ export async function SubmissionsSection() {
                 <div className={styles.links}>
                   {s.photos.map((p) => (
                     <a
-                      key={p.public_id}
+                      key={`${s.id}-${p.secure_url}`}
                       href={p.secure_url}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -124,7 +124,7 @@ export async function SubmissionsSection() {
                   ))}
                 </div>
                 <p className={styles.submissionId}>
-                  Bundle ID <code>{s.id}</code>
+                  Submission ID <code>{s.id}</code>
                 </p>
               </article>
             ))}

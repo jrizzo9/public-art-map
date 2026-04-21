@@ -1,50 +1,248 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Artwork } from "@/lib/sheet";
+import type { SheetPatch } from "@/lib/google-sheets-write";
 import styles from "./map-info-editor.module.css";
 
 type LocationMode = "address" | "coordinates";
 
-type MapItem = {
-  id: string;
+type Draft = {
+  slug: string;
   title: string;
   artist: string;
-  year?: string;
-  address?: string;
-  lat?: string;
-  lng?: string;
-  imageUrl?: string;
-  description?: string;
+  year: string;
+  address: string;
+  lat: string;
+  lng: string;
+  image: string;
+  description: string;
+  category: string;
+  commission: string;
+  collection: string;
 };
 
-/** Demo rows: uses address alone or coordinates alone (not both). */
-const SEED_ITEMS: MapItem[] = [
-  {
-    id: "seed-1",
-    title: "Example mural",
-    artist: "Artist name",
-    year: "2024",
-    address: "123 Example St, Waco, TX",
-    imageUrl: "https://res.cloudinary.com/example/image.jpg",
-    description: "Short description shown in the map popup / details panel.",
-  },
-  {
-    id: "seed-2",
-    title: "Example sculpture",
-    artist: "Another artist",
-    year: "2019",
-    lat: "31.5512",
-    lng: "-97.1379",
-    imageUrl: "",
-    description: "",
-  },
-];
+function artworkToDraft(a: Artwork): Draft {
+  return {
+    slug: a.slug,
+    title: a.title,
+    artist: a.artist ?? "",
+    year: a.year != null ? String(a.year) : "",
+    address: a.address ?? "",
+    lat: Number.isFinite(a.lat) ? String(a.lat) : "",
+    lng: Number.isFinite(a.lng) ? String(a.lng) : "",
+    image: a.image ?? "",
+    description: a.description ?? "",
+    category: a.category ?? "",
+    commission: a.commission ?? "",
+    collection: a.collection ?? "",
+  };
+}
 
-function deriveLocationMode(item: MapItem): LocationMode {
-  const lat = item.lat?.trim();
-  const lng = item.lng?.trim();
+function deriveLocationMode(d: Draft): LocationMode {
+  const lat = d.lat.trim();
+  const lng = d.lng.trim();
   if (lat && lng) return "coordinates";
   return "address";
+}
+
+function draftsEqual(a: Draft, b: Draft): boolean {
+  return (
+    a.slug === b.slug &&
+    a.title.trim() === b.title.trim() &&
+    a.artist.trim() === b.artist.trim() &&
+    a.year.trim() === b.year.trim() &&
+    a.address.trim() === b.address.trim() &&
+    a.lat.trim() === b.lat.trim() &&
+    a.lng.trim() === b.lng.trim() &&
+    a.image.trim() === b.image.trim() &&
+    a.description.trim() === b.description.trim() &&
+    a.category.trim() === b.category.trim() &&
+    a.commission.trim() === b.commission.trim() &&
+    a.collection.trim() === b.collection.trim()
+  );
+}
+
+function buildPatch(draft: Draft, baseline: Draft): SheetPatch {
+  const patch: SheetPatch = {};
+
+  if (draft.title.trim() !== baseline.title.trim()) {
+    patch.title = draft.title.trim();
+  }
+  if (draft.artist.trim() !== baseline.artist.trim()) {
+    patch.artist = draft.artist.trim() || null;
+  }
+
+  if (draft.year.trim() !== baseline.year.trim()) {
+    const y = draft.year.trim();
+    if (!y) patch.year = null;
+    else {
+      const n = parseInt(y, 10);
+      if (!Number.isFinite(n)) throw new Error("Year must be a whole number.");
+      patch.year = n;
+    }
+  }
+
+  if (draft.description.trim() !== baseline.description.trim()) {
+    patch.description = draft.description.trim() || null;
+  }
+
+  if (draft.image.trim() !== baseline.image.trim()) {
+    patch.image = draft.image.trim() || null;
+  }
+
+  if (draft.category.trim() !== baseline.category.trim()) {
+    patch.category = draft.category.trim() || null;
+  }
+
+  if (draft.commission.trim() !== baseline.commission.trim()) {
+    patch.commission = draft.commission.trim() || null;
+  }
+
+  if (draft.collection.trim() !== baseline.collection.trim()) {
+    patch.collection = draft.collection.trim() || null;
+  }
+
+  if (draft.address.trim() !== baseline.address.trim()) {
+    patch.address = draft.address.trim() || null;
+  }
+
+  if (draft.lat.trim() !== baseline.lat.trim()) {
+    const t = draft.lat.trim();
+    if (!t) patch.lat = null;
+    else {
+      const n = parseFloat(t);
+      if (!Number.isFinite(n) || n < -90 || n > 90) {
+        throw new Error("Latitude must be between -90 and 90.");
+      }
+      patch.lat = n;
+    }
+  }
+
+  if (draft.lng.trim() !== baseline.lng.trim()) {
+    const t = draft.lng.trim();
+    if (!t) patch.lng = null;
+    else {
+      const n = parseFloat(t);
+      if (!Number.isFinite(n) || n < -180 || n > 180) {
+        throw new Error("Longitude must be between -180 and 180.");
+      }
+      patch.lng = n;
+    }
+  }
+
+  return patch;
+}
+
+function ImageUrlField({
+  value,
+  onChange,
+  slug,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  slug: string;
+  disabled?: boolean;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const [previewBroken, setPreviewBroken] = useState(false);
+
+  const trimmed = value.trim();
+  const previewOk = /^https?:\/\//i.test(trimmed);
+
+  useEffect(() => {
+    setPreviewBroken(false);
+    setUploadErr(null);
+  }, [trimmed]);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadErr(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const safeSlug = slug.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80) || "artwork";
+      fd.append("publicId", `map-admin-${safeSlug}`);
+      const res = await fetch("/api/admin/cloudinary", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        cloudinary?: { secure_url?: string };
+      };
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? `Upload failed (${res.status}).`);
+      }
+      const url = json.cloudinary?.secure_url;
+      if (!url) throw new Error("No image URL returned.");
+      onChange(url);
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className={styles.imageUrlField}>
+      <span className={styles.fieldLabel}>Image</span>
+      <div className={styles.imagePreviewRow}>
+        <div className={styles.imagePreviewFrame}>
+          {previewOk && !previewBroken ? (
+            <img
+              src={trimmed}
+              alt=""
+              className={styles.imagePreviewImg}
+              onError={() => setPreviewBroken(true)}
+            />
+          ) : previewOk && previewBroken ? (
+            <span className={styles.imagePreviewBroken}>Preview unavailable</span>
+          ) : (
+            <span className={styles.imagePreviewEmpty}>Paste a URL below or upload a file</span>
+          )}
+        </div>
+        <div className={styles.imageUrlActions}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,.heic"
+            className={styles.visuallyHiddenInput}
+            tabIndex={-1}
+            onChange={handleFile}
+            aria-label="Choose image file to upload"
+          />
+          <button
+            type="button"
+            className={styles.replaceImageBtn}
+            disabled={disabled || uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Replace image…"}
+          </button>
+          {uploadErr ? <p className={styles.uploadErr}>{uploadErr}</p> : null}
+        </div>
+      </div>
+      <label className={styles.fieldWrap}>
+        <span className={styles.fieldLabel}>URL</span>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://…"
+          className={styles.inputBase}
+          spellCheck={false}
+          autoComplete="off"
+        />
+      </label>
+    </div>
+  );
 }
 
 function Field({
@@ -61,14 +259,14 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <label style={{ display: "grid", gap: 6 }}>
+    <label className={styles.fieldWrap}>
       <span className={styles.fieldLabel}>{label}</span>
       {multiline ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          rows={5}
+          rows={3}
           className={`${styles.inputBase} ${styles.textareaBase}`}
         />
       ) : (
@@ -83,256 +281,362 @@ function Field({
   );
 }
 
-export function MapInfoEditor() {
-  const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(SEED_ITEMS[0]?.id ?? "");
-  const [draft, setDraft] = useState<MapItem>(SEED_ITEMS[0] ?? ({} as MapItem));
+export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] }) {
+  const [artworks, setArtworks] = useState<Artwork[]>(initialArtworks);
+  const firstSlug = initialArtworks[0]?.slug ?? "";
+  const [selectedSlug, setSelectedSlug] = useState(firstSlug);
+  const [baseline, setBaseline] = useState<Draft | null>(() =>
+    initialArtworks[0] ? artworkToDraft(initialArtworks[0]) : null,
+  );
+  const [draft, setDraft] = useState<Draft | null>(() =>
+    initialArtworks[0] ? artworkToDraft(initialArtworks[0]) : null,
+  );
   const [locationMode, setLocationMode] = useState<LocationMode>(() =>
-    SEED_ITEMS[0] ? deriveLocationMode(SEED_ITEMS[0]) : "address"
+    initialArtworks[0] ? deriveLocationMode(artworkToDraft(initialArtworks[0])) : "address",
+  );
+
+  const [query, setQuery] = useState("");
+  /** Artwork picker list is collapsed by default so the editor stays primary. */
+  const [listOpen, setListOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<{ type: "ok" | "err" | "muted"; text: string } | null>(
+    null,
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return SEED_ITEMS;
-    return SEED_ITEMS.filter((i) => {
-      const hay = `${i.title} ${i.artist} ${i.address ?? ""}`.toLowerCase();
+    if (!q) return artworks;
+    return artworks.filter((a) => {
+      const hay = [
+        a.title,
+        a.artist ?? "",
+        a.address ?? "",
+        a.slug,
+        a.category ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
       return hay.includes(q);
     });
-  }, [query]);
+  }, [artworks, query]);
 
   const selected = useMemo(
-    () => SEED_ITEMS.find((i) => i.id === selectedId) ?? null,
-    [selectedId]
+    () => artworks.find((a) => a.slug === selectedSlug) ?? null,
+    [artworks, selectedSlug],
   );
 
-  function select(id: string) {
-    setSelectedId(id);
-    const item = SEED_ITEMS.find((i) => i.id === id);
-    if (item) {
-      setDraft(item);
-      setLocationMode(deriveLocationMode(item));
-    }
+  const dirty = Boolean(draft && baseline && !draftsEqual(draft, baseline));
+
+  async function refreshArtworks(): Promise<Artwork[]> {
+    const res = await fetch("/api/artworks?limit=10000");
+    const json = (await res.json()) as { data?: Artwork[]; error?: string };
+    if (!res.ok) throw new Error(json.error ?? "Failed to load artworks.");
+    const next = json.data ?? [];
+    setArtworks(next);
+    return next;
+  }
+
+  function select(slug: string) {
+    const item = artworks.find((a) => a.slug === slug);
+    if (!item) return;
+    const d = artworkToDraft(item);
+    setSelectedSlug(slug);
+    setBaseline(d);
+    setDraft({ ...d });
+    setLocationMode(deriveLocationMode(d));
+    setStatus(null);
+    setListOpen(false);
   }
 
   function setMode(next: LocationMode) {
+    if (!draft) return;
     setLocationMode(next);
     if (next === "address") {
-      setDraft((d) => ({ ...d, lat: "", lng: "" }));
+      setDraft((d) => (d ? { ...d, lat: "", lng: "" } : d));
     } else {
-      setDraft((d) => ({ ...d, address: "" }));
+      setDraft((d) => (d ? { ...d, address: "" } : d));
     }
+  }
+
+  async function handleSave() {
+    if (!draft || !baseline || !selectedSlug) return;
+    setStatus(null);
+    let patch: SheetPatch;
+    try {
+      patch = buildPatch(draft, baseline);
+    } catch (e) {
+      setStatus({
+        type: "err",
+        text: e instanceof Error ? e.message : "Invalid values.",
+      });
+      return;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      setStatus({ type: "muted", text: "No changes to save." });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/sheet-row", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: selectedSlug, patch }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        throw new Error(json.error ?? `Save failed (${res.status}).`);
+      }
+
+      const nextList = await refreshArtworks();
+      const fresh = nextList.find((a) => a.slug === selectedSlug);
+      if (fresh) {
+        const nd = artworkToDraft(fresh);
+        setBaseline(nd);
+        setDraft(nd);
+        setLocationMode(deriveLocationMode(nd));
+      }
+      setStatus({ type: "ok", text: "Saved. The map and directory will show updates after the sheet refreshes." });
+    } catch (e) {
+      setStatus({
+        type: "err",
+        text: e instanceof Error ? e.message : "Save failed.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleReset() {
+    if (!baseline) return;
+    setDraft({ ...baseline });
+    setLocationMode(deriveLocationMode(baseline));
+    setStatus(null);
+  }
+
+  if (!artworks.length) {
+    return (
+      <div className={styles.emptyState}>
+        No artworks loaded. Check <code>SHEET_CSV_URL</code> and republish the sheet.
+      </div>
+    );
   }
 
   return (
     <div className={styles.editorShell}>
-        <aside
-          style={{
-            border: "1px solid color-mix(in oklch, var(--border) 72%, transparent)",
-            borderRadius: 16,
-            background: "color-mix(in oklch, var(--muted) 22%, transparent)",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ padding: 12, borderBottom: "1px solid color-mix(in oklch, var(--border) 55%, transparent)" }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>
-                Search artworks
-              </span>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Title, artist, address…"
-                className={styles.inputBase}
-              />
-            </label>
-          </div>
-          <div style={{ display: "grid", padding: 8, gap: 6 }}>
-            {filtered.length ? (
-              filtered.map((i) => {
-                const active = i.id === selectedId;
-                return (
-                  <button
-                    key={i.id}
-                    type="button"
-                    onClick={() => select(i.id)}
-                    style={{
-                      textAlign: "left",
-                      padding: "10px 10px",
-                      borderRadius: 12,
-                      border: active
-                        ? "1px solid color-mix(in oklch, var(--primary) 55%, var(--border))"
-                        : "1px solid color-mix(in oklch, var(--border) 55%, transparent)",
-                      background: active
-                        ? "color-mix(in oklch, var(--primary) 10%, var(--card))"
-                        : "color-mix(in oklch, var(--card) 80%, transparent)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ fontSize: 13, fontWeight: 900 }}>{i.title}</div>
-                    <div style={{ fontSize: 12, opacity: 0.75 }}>
-                      {i.artist}
-                      {i.year ? ` · ${i.year}` : ""}
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div style={{ padding: 10, fontSize: 12, opacity: 0.75 }}>
-                No matches.
-              </div>
-            )}
-          </div>
-        </aside>
-
-        <section
-          style={{
-            display: "grid",
-            gap: 12,
-            border: "1px solid color-mix(in oklch, var(--border) 72%, transparent)",
-            borderRadius: 16,
-            background: "color-mix(in oklch, var(--card) 92%, transparent)",
-            padding: 12,
-          }}
-          aria-label="Editor"
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "grid", gap: 2 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.85 }}>
-                Selected
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 950 }}>
-                {selected ? selected.title : "—"}
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button
-                type="button"
-                disabled
-                title="Wire this up to persist changes (coming soon)"
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid color-mix(in oklch, var(--border) 72%, transparent)",
-                  background: "color-mix(in oklch, var(--primary) 20%, var(--card))",
-                  color: "var(--foreground)",
-                  fontWeight: 900,
-                  cursor: "not-allowed",
-                }}
-              >
-                Save changes
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!selected) return;
-                  setDraft(selected);
-                  setLocationMode(deriveLocationMode(selected));
-                }}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 12,
-                  border: "1px solid color-mix(in oklch, var(--border) 72%, transparent)",
-                  background: "color-mix(in oklch, var(--muted) 42%, transparent)",
-                  color: "var(--foreground)",
-                  fontWeight: 900,
-                  cursor: selected ? "pointer" : "not-allowed",
-                  opacity: selected ? 1 : 0.6,
-                }}
-                disabled={!selected}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.formFields}>
-            <Field
-              label="Title"
-              value={draft.title ?? ""}
-              onChange={(v) => setDraft((d) => ({ ...d, title: v }))}
-              placeholder="Artwork title"
-            />
-            <Field
-              label="Artist"
-              value={draft.artist ?? ""}
-              onChange={(v) => setDraft((d) => ({ ...d, artist: v }))}
-              placeholder="Artist name"
-            />
-            <Field
-              label="Year"
-              value={draft.year ?? ""}
-              onChange={(v) => setDraft((d) => ({ ...d, year: v }))}
-              placeholder="YYYY"
-            />
-
-            <div className={styles.locationBlock}>
-              <p className={styles.sectionLabel}>Location</p>
-              <div className={styles.locationToggle} role="group" aria-label="Location type">
-                <button
-                  type="button"
-                  data-active={locationMode === "address" ? "true" : "false"}
-                  onClick={() => setMode("address")}
-                >
-                  Address
-                </button>
-                <button
-                  type="button"
-                  data-active={locationMode === "coordinates" ? "true" : "false"}
-                  onClick={() => setMode("coordinates")}
-                >
-                  Latitude &amp; longitude
-                </button>
-              </div>
-              <p className={styles.locationHint}>
-                Use either a street address or coordinates—switching clears the other.
-              </p>
-
-              {locationMode === "address" ? (
-                <Field
-                  label="Street address"
-                  value={draft.address ?? ""}
-                  onChange={(v) => setDraft((d) => ({ ...d, address: v }))}
-                  placeholder="123 Example St, Waco, TX"
+      <aside className={styles.listAside}>
+        <div className={styles.listAsideBar}>
+          <button
+            type="button"
+            className={styles.listToggleBtn}
+            aria-expanded={listOpen}
+            onClick={() => setListOpen((o) => !o)}
+          >
+            <span className={styles.listToggleLabel}>
+              {listOpen ? "Hide artwork list" : "Browse artworks"}
+            </span>
+            <span className={styles.listToggleMeta} title={selected?.title ?? undefined}>
+              {artworks.length.toLocaleString()} · {selected?.title ?? "—"}
+            </span>
+          </button>
+        </div>
+        {listOpen ? (
+          <>
+            <div className={styles.listSearch}>
+              <label className={styles.fieldWrap}>
+                <span className={styles.fieldLabel}>Search</span>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Title, artist, address…"
+                  className={styles.inputBase}
                 />
+              </label>
+            </div>
+            <div className={styles.listScroll}>
+              {filtered.length ? (
+                filtered.map((a) => {
+                  const active = a.slug === selectedSlug;
+                  return (
+                    <button
+                      key={a.slug}
+                      type="button"
+                      className={styles.listBtn}
+                      data-active={active ? "true" : "false"}
+                      onClick={() => select(a.slug)}
+                    >
+                      <div className={styles.listTitle}>{a.title}</div>
+                      <div className={styles.listMeta}>
+                        {[a.artist, a.year != null ? String(a.year) : null].filter(Boolean).join(" · ") ||
+                          "—"}
+                      </div>
+                    </button>
+                  );
+                })
               ) : (
-                <div className={styles.coordsRow}>
-                  <Field
-                    label="Latitude"
-                    value={draft.lat ?? ""}
-                    onChange={(v) => setDraft((d) => ({ ...d, lat: v }))}
-                    placeholder="31.55"
-                  />
-                  <Field
-                    label="Longitude"
-                    value={draft.lng ?? ""}
-                    onChange={(v) => setDraft((d) => ({ ...d, lng: v }))}
-                    placeholder="-97.14"
-                  />
-                </div>
+                <div className={styles.statusMuted}>No matches.</div>
               )}
             </div>
+          </>
+        ) : null}
+      </aside>
 
-            <Field
-              label="Image URL"
-              value={draft.imageUrl ?? ""}
-              onChange={(v) => setDraft((d) => ({ ...d, imageUrl: v }))}
-              placeholder="https://…"
-            />
-
-            <Field
-              label="Description"
-              value={draft.description ?? ""}
-              onChange={(v) => setDraft((d) => ({ ...d, description: v }))}
-              placeholder="Short blurb for the map popup/details."
-              multiline
-            />
-
-            <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Next step: connect this UI to your map data source and enable Save.
-            </div>
+      <section className={styles.editorPanel} aria-label="Editor">
+        <div className={styles.editorHeader}>
+          <div className={styles.editorTitleBlock}>
+            <div className={styles.editorLabel}>Selected</div>
+            <div className={styles.editorSelectedTitle}>{selected?.title ?? "—"}</div>
           </div>
-        </section>
+
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.saveBtn}
+              disabled={!dirty || saving || !draft}
+              onClick={() => void handleSave()}
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              className={styles.resetBtn}
+              disabled={!draft || saving || !dirty}
+              onClick={handleReset}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {draft ? (
+          <>
+            <div>
+              <span className={styles.fieldLabel}>Slug (read-only)</span>
+              <p className={styles.slugReadonly}>{draft.slug}</p>
+            </div>
+
+            <div className={styles.formFields}>
+              <div className={styles.formRow2}>
+                <Field
+                  label="Title"
+                  value={draft.title}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, title: v } : d))}
+                  placeholder="Artwork title"
+                />
+                <Field
+                  label="Artist"
+                  value={draft.artist}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, artist: v } : d))}
+                  placeholder="Artist name"
+                />
+              </div>
+              <div className={styles.formRow2}>
+                <Field
+                  label="Year"
+                  value={draft.year}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, year: v } : d))}
+                  placeholder="YYYY"
+                />
+                <Field
+                  label="Category"
+                  value={draft.category}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, category: v } : d))}
+                  placeholder="Murals, Sculptures, …"
+                />
+              </div>
+              <div className={styles.formRow2}>
+                <Field
+                  label="Collection"
+                  value={draft.collection}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, collection: v } : d))}
+                  placeholder="Collection name"
+                />
+                <Field
+                  label="Commissioned by"
+                  value={draft.commission}
+                  onChange={(v) => setDraft((d) => (d ? { ...d, commission: v } : d))}
+                  placeholder="Commissioning body"
+                />
+              </div>
+
+              <div className={styles.locationBlock}>
+                <p className={styles.sectionLabel}>Location</p>
+                <div className={styles.locationToggle} role="group" aria-label="Location type">
+                  <button
+                    type="button"
+                    data-active={locationMode === "address" ? "true" : "false"}
+                    onClick={() => setMode("address")}
+                  >
+                    Address
+                  </button>
+                  <button
+                    type="button"
+                    data-active={locationMode === "coordinates" ? "true" : "false"}
+                    onClick={() => setMode("coordinates")}
+                  >
+                    Latitude &amp; longitude
+                  </button>
+                </div>
+                <p className={styles.locationHint}>Switching mode clears the other field.</p>
+
+                {locationMode === "address" ? (
+                  <Field
+                    label="Street address"
+                    value={draft.address}
+                    onChange={(v) => setDraft((d) => (d ? { ...d, address: v } : d))}
+                    placeholder="123 Example St, Waco, TX"
+                  />
+                ) : (
+                  <div className={styles.coordsRow}>
+                    <Field
+                      label="Latitude"
+                      value={draft.lat}
+                      onChange={(v) => setDraft((d) => (d ? { ...d, lat: v } : d))}
+                      placeholder="31.55"
+                    />
+                    <Field
+                      label="Longitude"
+                      value={draft.lng}
+                      onChange={(v) => setDraft((d) => (d ? { ...d, lng: v } : d))}
+                      placeholder="-97.14"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <ImageUrlField
+                slug={draft.slug}
+                disabled={saving}
+                value={draft.image}
+                onChange={(v) => setDraft((d) => (d ? { ...d, image: v } : d))}
+              />
+
+              <Field
+                label="Description"
+                value={draft.description}
+                onChange={(v) => setDraft((d) => (d ? { ...d, description: v } : d))}
+                placeholder="Short blurb for the map popup/details."
+                multiline
+              />
+
+              {status ? (
+                <p
+                  className={
+                    status.type === "ok"
+                      ? styles.statusOk
+                      : status.type === "err"
+                        ? styles.statusErr
+                        : styles.statusMuted
+                  }
+                >
+                  {status.text}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </section>
     </div>
   );
 }

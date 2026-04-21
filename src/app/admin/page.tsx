@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
+import { getArtworks } from "@/lib/sheet";
 import styles from "./admin.module.css";
 import { MapInfoEditor } from "./map/MapInfoEditor";
 import { SubmissionsSection } from "./SubmissionsSection";
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
+  const artworks = await getArtworks();
+
   return (
     <div className={styles.shell}>
       <div className={styles.wrap}>
@@ -23,11 +26,7 @@ export default async function AdminPage() {
               <p className={styles.cardTitle}>Edit map info</p>
             </div>
             <div className={styles.cardBody}>
-              <p className={styles.sub} style={{ marginTop: 0 }}>
-                UI only for now. This will let you search/select an artwork and edit the fields
-                shown on the map.
-              </p>
-              <MapInfoEditor />
+              <MapInfoEditor initialArtworks={artworks} />
             </div>
           </div>
         </section>
