@@ -6,6 +6,29 @@ import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
 import type { Artwork } from "@/lib/sheet";
 
+/** Left column matches floating list panel (~340px) + edge breathing room; asymmetric vertical padding biases the focal point up/right. */
+const PANEL_RESERVE_PX = 340;
+const PANEL_GUTTER_PX = 28;
+
+function selectionFlyPadding(map: mapboxgl.Map) {
+  const { width: w, height: h } = map.getContainer().getBoundingClientRect();
+  if (!w || !h) {
+    return { top: 48, right: 32, bottom: 120, left: 360 };
+  }
+
+  const isNarrow = w < 640;
+  const minPanelReserve = PANEL_RESERVE_PX + PANEL_GUTTER_PX + 16;
+  const left = isNarrow
+    ? Math.max(12, Math.round(w * 0.04))
+    : Math.round(Math.min(Math.max(minPanelReserve, w * 0.34), w - 140));
+
+  const top = Math.round(h * 0.06);
+  const bottom = Math.round(h * 0.2);
+  const right = Math.min(56, Math.round(w * 0.04));
+
+  return { top, right, bottom, left };
+}
+
 type Props = {
   artworks: Artwork[];
   selectedSlug?: string;
@@ -30,6 +53,10 @@ export function MapView({
   const popupRef = useRef<mapboxgl.Popup | null>(null);
   const didFitBoundsRef = useRef(false);
   const ignoreNextMapClickRef = useRef(false);
+  const onSelectSlugRef = useRef(onSelectSlug);
+  const onClearSelectionRef = useRef(onClearSelection);
+  onSelectSlugRef.current = onSelectSlug;
+  onClearSelectionRef.current = onClearSelection;
 
   const bounds = useMemo(() => {
     const coords = artworks.map((a) => [a.lng, a.lat] as const);
@@ -63,7 +90,17 @@ export function MapView({
 
     mapRef.current = map;
 
+    const container = containerRef.current;
+    const ro =
+      typeof ResizeObserver !== "undefined" && container
+        ? new ResizeObserver(() => {
+            map.resize();
+          })
+        : null;
+    ro?.observe(container);
+
     return () => {
+      ro?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
     };
@@ -95,7 +132,7 @@ export function MapView({
         e.stopPropagation();
         // Mapbox will still emit a map click in some cases; ignore the next one.
         ignoreNextMapClickRef.current = true;
-        onSelectSlug?.(art.slug);
+        onSelectSlugRef.current?.(art.slug);
       });
 
       const marker = new mapboxgl.Marker({ element: el })
@@ -109,7 +146,8 @@ export function MapView({
       map.fitBounds(bounds, { padding: 60, duration: 0, maxZoom: 15 });
       didFitBoundsRef.current = true;
     }
-  }, [artworks, bounds, onSelectSlug]);
+    // Intentionally omit onSelectSlug: parent re-renders must not rebuild markers + fitBounds.
+  }, [artworks, bounds]);
 
   useEffect(() => {
     for (const art of artworks) {
@@ -134,13 +172,13 @@ export function MapView({
       const target = e.originalEvent?.target as HTMLElement | null;
       if (target?.closest(".mapboxgl-marker, .mapboxgl-popup")) return;
 
-      onClearSelection?.();
+      onClearSelectionRef.current?.();
     };
     map.on("click", onMapClick);
     return () => {
       map.off("click", onMapClick);
     };
-  }, [onClearSelection]);
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -153,10 +191,12 @@ export function MapView({
     const art = artworks.find((a) => a.slug === selectedSlug);
     if (!art) return;
 
-    // Fly directly to the selection (avoid any "reset to bounds" first).
+    // Place the artwork in the clear map area (right of the floating panel), biased toward the upper-right.
     map.flyTo({
       center: [art.lng, art.lat],
       zoom: Math.max(map.getZoom(), 14),
+      padding: selectionFlyPadding(map),
+      retainPadding: false,
       essential: true,
       duration: 900,
       curve: 1.5,
@@ -193,7 +233,7 @@ export function MapView({
     close.style.fontSize = "18px";
     close.addEventListener("click", (e) => {
       e.stopPropagation();
-      onClearSelection?.();
+      onClearSelectionRef.current?.();
     });
 
     title.style.paddingTop = "2px";
@@ -248,6 +288,20 @@ export function MapView({
 
     links.appendChild(details);
     links.appendChild(embed);
+
+    if (art.externalUrl) {
+      const ext = document.createElement("a");
+      ext.href = art.externalUrl;
+      ext.rel = "noopener noreferrer";
+      ext.target = "_blank";
+      ext.textContent = "Website →";
+      ext.style.fontSize = "12px";
+      ext.style.textDecoration = "underline";
+      ext.style.color = "rgba(17,23,38,0.92)";
+      ext.addEventListener("click", (e) => e.stopPropagation());
+      links.appendChild(ext);
+    }
+
     wrap.appendChild(links);
 
     const popup = new mapboxgl.Popup({

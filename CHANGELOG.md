@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Mobile layout:** map and artwork list each use **half the viewport height** (stacked top/bottom) instead of a floating panel over the map.
 - Left panel layout: vertically centered, tighter typography/spacing; subtitle and collapse control removed from the header.
 - Search input spacing under the field adjusted for clearer separation from the count row.
 

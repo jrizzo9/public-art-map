@@ -9,8 +9,8 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 
 ## UI notes
 
-- The map is **fullscreen**.
-- The left panel **floats over the map** (vertically centered, compact).
+- **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
+- **Mobile (narrow viewports):** **split layout** — map occupies the **top half** of the screen and the list panel occupies the **bottom half** (no overlay).
 - Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** with title, optional image, and links to details/embed.
 - Click empty map area to clear the popup selection.
 
@@ -28,10 +28,12 @@ Your Google Sheet must have a header row and (at minimum) these columns:
 | `image` | no | https URL |
 | `address` | no | |
 | `category` | no | |
+| `Commissioned By` | no | Shown under **Placement** → Commission |
+| `Collection` | no | Shown under **Placement** → Collection |
 
 Invalid rows (missing required fields / invalid coords) are skipped.
 
-The CSV parser also accepts common variants like `latitude`/`longitude` and `name` (as `title`).
+The CSV parser also accepts common variants like `latitude`/`longitude` and `name` (as `title`). Column headers are matched case-insensitively after normalizing spaces.
 
 ## Environment variables
 
