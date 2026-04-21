@@ -18,12 +18,15 @@ export const env = {
   NEXT_PUBLIC_SITE_URL: () =>
     normalizeOrigin(
       optional("NEXT_PUBLIC_SITE_URL") ??
-        // Vercel provides VERCEL_URL as "<project>.vercel.app" (no scheme)
-        optional("VERCEL_URL") ??
-        // Fallback for production builds when env vars aren't set.
-        (process.env.NODE_ENV === "production"
-          ? "https://map.creativewaco.org"
-          : "http://localhost:3000"),
+        (process.env.VERCEL_ENV === "production"
+          ? // Prefer the custom domain for canonical URLs on production.
+            // (VERCEL_URL is the deployment *.vercel.app URL.)
+            optional("VERCEL_PROJECT_PRODUCTION_URL") ?? "https://map.creativewaco.org"
+          : // Vercel provides VERCEL_URL as "<project>.vercel.app" (no scheme)
+            optional("VERCEL_URL") ??
+            (process.env.NODE_ENV === "production"
+              ? "https://map.creativewaco.org"
+              : "http://localhost:3000")),
     ),
   SHEET_CSV_URL: () => optional("SHEET_CSV_URL") ?? "",
   NEXT_PUBLIC_MAPBOX_TOKEN: () => optional("NEXT_PUBLIC_MAPBOX_TOKEN") ?? "",
