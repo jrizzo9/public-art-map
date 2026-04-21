@@ -220,3 +220,77 @@ a {
     @apply font-sans;
   }
 }
+
+/* View transitions: map ↔ artwork detail (requires experimental.viewTransition in next.config) */
+:root {
+  --vt-duration-exit: 160ms;
+  --vt-duration-enter: 220ms;
+}
+
+@keyframes art-vt-fade {
+  from {
+    filter: blur(2px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+@keyframes art-vt-slide {
+  from {
+    translate: var(--vt-slide-offset);
+  }
+  to {
+    translate: 0;
+  }
+}
+
+::view-transition-old(.nav-forward) {
+  --vt-slide-offset: -48px;
+  animation:
+    var(--vt-duration-exit) ease-in both art-vt-fade reverse,
+    var(--vt-duration-exit) ease-in-out both art-vt-slide reverse;
+}
+::view-transition-new(.nav-forward) {
+  --vt-slide-offset: 48px;
+  animation:
+    var(--vt-duration-enter) ease-out var(--vt-duration-exit) both art-vt-fade,
+    350ms ease-in-out both art-vt-slide;
+}
+
+::view-transition-old(.nav-back) {
+  --vt-slide-offset: 48px;
+  animation:
+    var(--vt-duration-exit) ease-in both art-vt-fade reverse,
+    var(--vt-duration-exit) ease-in-out both art-vt-slide reverse;
+}
+::view-transition-new(.nav-back) {
+  --vt-slide-offset: -48px;
+  animation:
+    var(--vt-duration-enter) ease-out var(--vt-duration-exit) both art-vt-fade,
+    350ms ease-in-out both art-vt-slide;
+}
+
+[data-brand-chrome] {
+  view-transition-name: brand-logo;
+}
+
+::view-transition-group(brand-logo) {
+  animation: none;
+  z-index: 50;
+}
+::view-transition-old(brand-logo),
+::view-transition-new(brand-logo) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}

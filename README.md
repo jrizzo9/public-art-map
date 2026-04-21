@@ -10,11 +10,12 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 ## UI notes
 
 - **Theming:** the app uses **Tailwind CSS v4**, **shadcn/ui** primitives, and a shared **semantic palette** (CSS variables in `src/app/globals.css`) so the floating panel, detail pages, embed shell, and Mapbox-built popup/marker chrome stay visually consistent.
-- **Branding:** a [Creative Waco](https://creativewaco.org/) wordmark is fixed in the **top-left** on the home map (link to the main org site); it sits clear of the art list column on the right.
-- **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
+- **Branding:** a [Creative Waco](https://creativewaco.org/) wordmark is fixed in the **top-left** on the home map and the **artwork detail** page (link to the main org site); on the map it sits clear of the **left** list panel.
+- **Artwork detail (`/art/[slug]`):** a **frosted, centered** card; the page **scrolls** when content is long. When `NEXT_PUBLIC_MAPBOX_TOKEN` and valid coordinates are set, a **Mapbox Static** map image of the **artwork’s location** is used as the full-page background, with a **dark** scrim; otherwise a **gradient** fallback. **View Transitions** animate between the map and the detail page (see `next.config.ts` and `src/app/globals.css`).
+- **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map on the **left** (vertically centered, compact).
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~half the viewport) for the panel (collapsible **Filters** + artwork list); selecting an artwork flies the marker to about the **middle of the clear map** (slightly below center) so the popup can sit **above** the dot with map context underneath.
 - **Filters:** **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range—expand **Filters** to refine the map and list. Nothing selected on a facet means **no filtering** on that facet; selecting one or more chips narrows to artworks matching **any** of those selections (within that facet). Chips available in each facet reflect the current **other** facets and **year** range so impossible combinations stay hidden; changing filters may drop selections that no longer apply. Each facet has **Any** to clear only that facet. **Clear** resets category, commission, collection, and year. The **title and Filters stay fixed**; only the **artwork list** (and **Showing X of Y** under it) scrolls. Changing filters **refits the map** to the visible markers with a short debounce when values change quickly.
-- Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** (tip points at the marker) with title, optional image, and links to details/embed.
+- Choosing an artwork from the list row (main hit target) or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** (tip points at the marker) with title, optional image, and links to details/embed; each row also has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the popup.
 - Click empty map area to clear the popup selection.
 
 ## Sheet contract (columns)
@@ -31,11 +32,11 @@ Your Google Sheet must have a header row and (at minimum) these columns:
 | `image` | no | https URL |
 | `address` | no | |
 | `category` | no | Map/list marker color; filterable on home |
-| `artist` | no | Detail page header line |
-| `year` | no | Detail page + filterable range on home |
+| `artist` | no | Artwork detail **Artist** row (structured block) |
+| `year` | no | Artwork detail **Year** row + filterable range on home |
 | `Commissioned By` | no | Shown under **Placement** → Commission |
 | `Collection` | no | Shown under **Placement** → Collection |
-| `URL` / `link` / `website` | no | External “More information” link on detail when valid https URL |
+| `URL` / `link` / `website` | no | **Website →** link in the **map popup** when valid https URL (not rendered on the detail card) |
 | `image_id` | no | Use with **`NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE`** if no direct image URL column |
 
 Invalid rows (missing required fields / invalid coords) are skipped.

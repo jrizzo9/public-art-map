@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Creative Waco** wordmark in the top-left of the home map, linking to [creativewaco.org](https://creativewaco.org/).
+- **View Transitions** (Next `experimental.viewTransition`) for **map home ↔ `/art/[slug]`** navigations, with **nav-forward** / **nav-back** CSS, shared **logo** `view-transition-name` anchor, and **Details** (list + map popup) / **← Map** / 404 back using `transitionTypes` on `Link` or `router.push`.
+- **Art detail shell** (`art-detail-shell.module.css`): same **Creative Waco** wordmark; **centered** frosted **panel**; **page-level scroll** for long copy; **Mapbox Static Images** snapshot of the artwork’s **lat/lng** (same `NEXT_PUBLIC_MAPBOX_TOKEN` + `NEXT_PUBLIC_MAPBOX_STYLE_URL` as the map) with a **dark** top-to-bottom **overlay**; **gradient fallback** when the API is not used.
+- **`mapbox-static.ts`**: build **Static Images** preview URLs (zoomed block context) for the detail backdrop.
+- **Home list:** per-row **Details** control to open the SEO page with a **forward** view transition; main row still **selects** the map + popup.
+- **Artwork detail** content in **section + `dl` / `dt` / `dd` blocks** for **Artist**, **Description**, **Placement** (commission + collection), and **Year**; **image placeholder** when there is no photo URL.
 - **Tailwind CSS v4** with PostCSS (`postcss.config.mjs`), **shadcn/ui** (`components.json`, `cn` helper, sample `Button`), and **Tangerine**-aligned design tokens in `globals.css` (imported theme registry URL).
 - **Theme-aware Mapbox UI**: marker and popup styles via CSS modules using the same semantic color variables as the rest of the app.
 - **Map popup preview** for the selected artwork (title, image when present, links) anchored above the marker; selection clears when clicking the map background.
@@ -18,13 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Filters** (collapsible): **category** (pill toggles + map colors), **commission**, **collection**, and **year** range; badge and **Clear** when refinements are active.
 - **Marker and list dot colors** by category (`category-colors`); fixed hues for **Decommissioned art**, **Sculptures**, and **Fountains** so they stay distinct from green-heavy hash slots.
 - Google Sheet **published CSV** ingestion with validation and flexible column mapping; optional **`image_id`** + **`NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE`** (`{id}`) when no direct image URL column.
-- Sheet-backed fields on artworks: **year**, **artist**, **commission**, **collection**, **external URL** (`url` / `link` / `website` column variants).
-- Artwork detail **Placement** section (commission + collection), **year · artist** under the title when present, and **More information** link when `externalUrl` is set.
+- Sheet-backed fields on artworks: **year**, **artist**, **commission**, **collection**, **external URL** (`url` / `link` / `website` column variants) for the **map popup** and data (not a direct “More information” block on the detail card).
 - SEO routes for artwork detail pages (`/art/[slug]`) and Webflow-friendly embed routes (`/embed/art/[slug]`).
 - `sitemap.xml` + `robots.txt` generation based on current sheet rows.
 
 ### Changed
 
+- **Artwork detail page** layout and copy: removed **PUBLIC ART** kicker, visible **Placement** section title, **latitude/longitude** grid, and the **detail-page** external **More information** link (`externalUrl` still powers **Website →** on the **map popup** when set).
+- **Facet selection pruning:** compute **effective** category/commission/collection sets with **`deriveFacetUi`** during render instead of **`useEffect`** + `setState` (avoids cascading-render lint while keeping impossible chip selections pruned).
 - **Mapbox selection popup** (artwork preview on the map): **rounded corners**, **card** background, and **border / shadow** from the design system (overrides Mapbox’s default flat box).
 - **Home filters:** add **collection** (sheet column) beside category and commission; facet toggles start **unselected** (no filtering on that dimension until you pick chips); selecting chips **includes** matching artworks (**OR** within each facet). **Any** clears one facet only (replaces prior **All / None** controls).
 - **Responsive facet lists:** category, commission, and collection chips shown for each facet reflect the **other** facets plus the **year** range; selections that become invalid when options shrink are **pruned** automatically.

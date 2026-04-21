@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import "@/components/mapbox-popup-theme.css";
 
 import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef } from "react";
 import markerStyles from "@/components/MapMarker.module.css";
 import popupStyles from "@/components/MapPopup.module.css";
@@ -70,6 +71,7 @@ export function MapView({
   onClearSelection,
   styleUrl,
 }: Props) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -274,6 +276,17 @@ export function MapView({
       img.loading = "lazy";
       img.className = popupStyles.image;
       wrap.appendChild(img);
+    } else {
+      const ph = document.createElement("div");
+      ph.className = popupStyles.imagePlaceholder;
+      ph.setAttribute("role", "img");
+      ph.setAttribute("aria-label", "Photo not yet available");
+      const label = document.createElement("span");
+      label.className = popupStyles.placeholderInner;
+      label.textContent = "Photo coming soon";
+      label.setAttribute("aria-hidden", "true");
+      ph.appendChild(label);
+      wrap.appendChild(ph);
     }
 
     const links = document.createElement("div");
@@ -283,7 +296,22 @@ export function MapView({
     details.href = `/art/${art.slug}`;
     details.textContent = "Details →";
     details.className = popupStyles.link;
-    details.addEventListener("click", (e) => e.stopPropagation());
+    details.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (
+        e.metaKey ||
+        e.ctrlKey ||
+        e.shiftKey ||
+        e.altKey ||
+        e.button !== 0
+      ) {
+        return;
+      }
+      e.preventDefault();
+      router.push(`/art/${art.slug}`, {
+        transitionTypes: ["nav-forward"],
+      });
+    });
 
     const embed = document.createElement("a");
     embed.href = `/embed/art/${art.slug}`;
@@ -325,7 +353,7 @@ export function MapView({
       .addTo(map);
 
     popupRef.current = popup;
-  }, [artworks, selectedSlug]);
+  }, [artworks, selectedSlug, router]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

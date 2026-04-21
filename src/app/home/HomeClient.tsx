@@ -1,16 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
 import { MapView } from "@/components/MapView";
+import { BrandLogo } from "@/components/BrandLogo";
 import styles from "./home.module.css";
-
-const CREATIVE_WACO_HOME = "https://creativewaco.org/";
-const CREATIVE_WACO_LOGO_URL =
-  "https://yrnfoftkuamimcaownig.supabase.co/storage/v1/object/public/culturalyst/is5gglgrgelofzc4ia7bm4cqfu71";
 
 type Props = {
   artworks: Artwork[];
@@ -118,6 +116,160 @@ function pruneSelectionToAllowed(
   return setsEqual(prev, next) ? prev : next;
 }
 
+function collectCategoryOptions(pool: Artwork[]): FacetOption[] {
+  const labels = new Map<string, string>();
+  for (const a of pool) {
+    const key = categoryFacetKey(a);
+    if (labels.has(key)) continue;
+    labels.set(key, a.category?.trim() || "Uncategorized");
+  }
+  return [...labels.entries()]
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function collectCommissionOptions(pool: Artwork[]): FacetOption[] {
+  const labels = new Map<string, string>();
+  for (const a of pool) {
+    const key = commissionFacetKey(a);
+    if (labels.has(key)) continue;
+    labels.set(key, a.commission?.trim() || "Not listed");
+  }
+  return [...labels.entries()]
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function collectCollectionOptions(pool: Artwork[]): FacetOption[] {
+  const labels = new Map<string, string>();
+  for (const a of pool) {
+    const key = collectionFacetKey(a);
+    if (labels.has(key)) continue;
+    labels.set(key, a.collection?.trim() || "Not listed");
+  }
+  return [...labels.entries()]
+    .map(([key, label]) => ({ key, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+type FacetUi = {
+  effectiveCategories: Set<string>;
+  effectiveCommissions: Set<string>;
+  effectiveCollections: Set<string>;
+  categoryOptions: FacetOption[];
+  commissionOptions: FacetOption[];
+  collectionOptions: FacetOption[];
+};
+
+/** Prunes facet selections against current option lists; iterates until stable (no useEffect). */
+function deriveFacetUi(
+  artworks: Artwork[],
+  yearParsed: YearParsed,
+  selectedCategories: Set<string>,
+  selectedCommissions: Set<string>,
+  selectedCollections: Set<string>,
+): FacetUi {
+  let cat = selectedCategories;
+  let comm = selectedCommissions;
+  let coll = selectedCollections;
+
+  for (let i = 0; i < 24; i++) {
+    const poolForCategoryOptions = artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(a, cat, comm, coll, "category") &&
+        artworkMatchesYear(a, yearParsed),
+    );
+    const categoryOptions = collectCategoryOptions(poolForCategoryOptions);
+    const catNext = pruneSelectionToAllowed(
+      cat,
+      categoryOptions.map((o) => o.key),
+    );
+
+    const poolForCommissionOptions = artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(a, catNext, comm, coll, "commission") &&
+        artworkMatchesYear(a, yearParsed),
+    );
+    const commissionOptions = collectCommissionOptions(poolForCommissionOptions);
+    const commNext = pruneSelectionToAllowed(
+      comm,
+      commissionOptions.map((o) => o.key),
+    );
+
+    const poolForCollectionOptions = artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(
+          a,
+          catNext,
+          commNext,
+          coll,
+          "collection",
+        ) && artworkMatchesYear(a, yearParsed),
+    );
+    const collectionOptions = collectCollectionOptions(poolForCollectionOptions);
+    const collNext = pruneSelectionToAllowed(
+      coll,
+      collectionOptions.map((o) => o.key),
+    );
+
+    if (
+      setsEqual(catNext, cat) &&
+      setsEqual(commNext, comm) &&
+      setsEqual(collNext, coll)
+    ) {
+      return {
+        effectiveCategories: catNext,
+        effectiveCommissions: commNext,
+        effectiveCollections: collNext,
+        categoryOptions,
+        commissionOptions,
+        collectionOptions,
+      };
+    }
+
+    cat = catNext;
+    comm = commNext;
+    coll = collNext;
+  }
+
+  const poolForCategoryOptions = artworks.filter(
+    (a) =>
+      artworkMatchesOtherFacetFilters(a, cat, comm, coll, "category") &&
+      artworkMatchesYear(a, yearParsed),
+  );
+  const categoryOptions = collectCategoryOptions(poolForCategoryOptions);
+  const poolForCommissionOptions = artworks.filter(
+    (a) =>
+      artworkMatchesOtherFacetFilters(a, cat, comm, coll, "commission") &&
+      artworkMatchesYear(a, yearParsed),
+  );
+  const commissionOptions = collectCommissionOptions(poolForCommissionOptions);
+  const poolForCollectionOptions = artworks.filter(
+    (a) =>
+      artworkMatchesOtherFacetFilters(a, cat, comm, coll, "collection") &&
+      artworkMatchesYear(a, yearParsed),
+  );
+  const collectionOptions = collectCollectionOptions(poolForCollectionOptions);
+
+  return {
+    effectiveCategories: pruneSelectionToAllowed(
+      cat,
+      categoryOptions.map((o) => o.key),
+    ),
+    effectiveCommissions: pruneSelectionToAllowed(
+      comm,
+      commissionOptions.map((o) => o.key),
+    ),
+    effectiveCollections: pruneSelectionToAllowed(
+      coll,
+      collectionOptions.map((o) => o.key),
+    ),
+    categoryOptions,
+    commissionOptions,
+    collectionOptions,
+  };
+}
+
 export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
@@ -134,110 +286,32 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     [yearMin, yearMax],
   );
 
-  const poolForCategoryOptions = useMemo(() => {
-    return artworks.filter(
-      (a) =>
-        artworkMatchesOtherFacetFilters(
-          a,
-          selectedCategories,
-          selectedCommissions,
-          selectedCollections,
-          "category",
-        ) && artworkMatchesYear(a, yearParsed),
-    );
-  }, [
-    artworks,
-    selectedCategories,
-    selectedCommissions,
-    selectedCollections,
-    yearParsed,
-  ]);
+  const facetUi = useMemo(
+    () =>
+      deriveFacetUi(
+        artworks,
+        yearParsed,
+        selectedCategories,
+        selectedCommissions,
+        selectedCollections,
+      ),
+    [
+      artworks,
+      yearParsed,
+      selectedCategories,
+      selectedCommissions,
+      selectedCollections,
+    ],
+  );
 
-  const poolForCommissionOptions = useMemo(() => {
-    return artworks.filter(
-      (a) =>
-        artworkMatchesOtherFacetFilters(
-          a,
-          selectedCategories,
-          selectedCommissions,
-          selectedCollections,
-          "commission",
-        ) && artworkMatchesYear(a, yearParsed),
-    );
-  }, [
-    artworks,
-    selectedCategories,
-    selectedCommissions,
-    selectedCollections,
-    yearParsed,
-  ]);
-
-  const poolForCollectionOptions = useMemo(() => {
-    return artworks.filter(
-      (a) =>
-        artworkMatchesOtherFacetFilters(
-          a,
-          selectedCategories,
-          selectedCommissions,
-          selectedCollections,
-          "collection",
-        ) && artworkMatchesYear(a, yearParsed),
-    );
-  }, [
-    artworks,
-    selectedCategories,
-    selectedCommissions,
-    selectedCollections,
-    yearParsed,
-  ]);
-
-  const categoryOptions = useMemo((): FacetOption[] => {
-    const labels = new Map<string, string>();
-    for (const a of poolForCategoryOptions) {
-      const key = categoryFacetKey(a);
-      if (labels.has(key)) continue;
-      labels.set(key, a.category?.trim() || "Uncategorized");
-    }
-    return [...labels.entries()]
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [poolForCategoryOptions]);
-
-  const commissionOptions = useMemo((): FacetOption[] => {
-    const labels = new Map<string, string>();
-    for (const a of poolForCommissionOptions) {
-      const key = commissionFacetKey(a);
-      if (labels.has(key)) continue;
-      labels.set(key, a.commission?.trim() || "Not listed");
-    }
-    return [...labels.entries()]
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [poolForCommissionOptions]);
-
-  const collectionOptions = useMemo((): FacetOption[] => {
-    const labels = new Map<string, string>();
-    for (const a of poolForCollectionOptions) {
-      const key = collectionFacetKey(a);
-      if (labels.has(key)) continue;
-      labels.set(key, a.collection?.trim() || "Not listed");
-    }
-    return [...labels.entries()]
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [poolForCollectionOptions]);
-
-  useEffect(() => {
-    setSelectedCategories((prev) =>
-      pruneSelectionToAllowed(prev, categoryOptions.map((o) => o.key)),
-    );
-    setSelectedCommissions((prev) =>
-      pruneSelectionToAllowed(prev, commissionOptions.map((o) => o.key)),
-    );
-    setSelectedCollections((prev) =>
-      pruneSelectionToAllowed(prev, collectionOptions.map((o) => o.key)),
-    );
-  }, [categoryOptions, commissionOptions, collectionOptions]);
+  const {
+    effectiveCategories,
+    effectiveCommissions,
+    effectiveCollections,
+    categoryOptions,
+    commissionOptions,
+    collectionOptions,
+  } = facetUi;
 
   const yearBounds = useMemo(() => {
     const years = artworks
@@ -250,20 +324,20 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   const filtered = useMemo(() => {
     return artworks.filter((a) => {
       if (
-        selectedCategories.size > 0 &&
-        !selectedCategories.has(categoryFacetKey(a))
+        effectiveCategories.size > 0 &&
+        !effectiveCategories.has(categoryFacetKey(a))
       ) {
         return false;
       }
       if (
-        selectedCommissions.size > 0 &&
-        !selectedCommissions.has(commissionFacetKey(a))
+        effectiveCommissions.size > 0 &&
+        !effectiveCommissions.has(commissionFacetKey(a))
       ) {
         return false;
       }
       if (
-        selectedCollections.size > 0 &&
-        !selectedCollections.has(collectionFacetKey(a))
+        effectiveCollections.size > 0 &&
+        !effectiveCollections.has(collectionFacetKey(a))
       ) {
         return false;
       }
@@ -271,9 +345,9 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     });
   }, [
     artworks,
-    selectedCategories,
-    selectedCommissions,
-    selectedCollections,
+    effectiveCategories,
+    effectiveCommissions,
+    effectiveCollections,
     yearParsed,
   ]);
 
@@ -313,9 +387,9 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   }, []);
 
   const activeFilterCount =
-    selectedCategories.size +
-    selectedCommissions.size +
-    selectedCollections.size +
+    effectiveCategories.size +
+    effectiveCommissions.size +
+    effectiveCollections.size +
     (yearMin.trim() !== "" || yearMax.trim() !== "" ? 1 : 0);
 
   const onSelectArtwork = useCallback((slug: string) => {
@@ -334,30 +408,29 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     }
     setSelectedSlug(undefined);
   }, [
-    selectedCategories,
-    selectedCommissions,
-    selectedCollections,
+    effectiveCategories,
+    effectiveCommissions,
+    effectiveCollections,
     yearMin,
     yearMax,
   ]);
 
   return (
-    <div className={styles.shell}>
-      <a
-        href={CREATIVE_WACO_HOME}
-        className={styles.brandLogo}
-        aria-label="Creative Waco — visit creativewaco.org"
-      >
-        <Image
-          src={CREATIVE_WACO_LOGO_URL}
-          alt=""
-          width={220}
-          height={56}
-          className={styles.brandLogoImg}
-          priority
-          sizes="220px"
-        />
-      </a>
+    <ViewTransition
+      enter={{
+        "nav-forward": "nav-forward",
+        "nav-back": "nav-back",
+        default: "none",
+      }}
+      exit={{
+        "nav-forward": "nav-forward",
+        "nav-back": "nav-back",
+        default: "none",
+      }}
+      default="none"
+    >
+      <div className={styles.shell}>
+      <BrandLogo className={styles.brandLogo} imgClassName={styles.brandLogoImg} />
 
       <section className={styles.map}>
         <MapView
@@ -404,7 +477,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                 <button
                   type="button"
                   className={styles.filterLink}
-                  disabled={selectedCategories.size === 0}
+                  disabled={effectiveCategories.size === 0}
                   onClick={() => setSelectedCategories(new Set())}
                 >
                   Any
@@ -413,7 +486,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
             </div>
             <ul className={styles.filterToggleList} aria-label="Categories">
               {categoryOptions.map((o) => {
-                const on = selectedCategories.has(o.key);
+                const on = effectiveCategories.has(o.key);
                 const dotColor =
                   o.key === UNCATEGORIZED_KEY
                     ? markerColorForCategory(undefined)
@@ -447,7 +520,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                 <button
                   type="button"
                   className={styles.filterLink}
-                  disabled={selectedCommissions.size === 0}
+                  disabled={effectiveCommissions.size === 0}
                   onClick={() => setSelectedCommissions(new Set())}
                 >
                   Any
@@ -456,7 +529,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
             </div>
             <ul className={styles.filterToggleList} aria-label="Commission">
               {commissionOptions.map((o) => {
-                const on = selectedCommissions.has(o.key);
+                const on = effectiveCommissions.has(o.key);
                 return (
                   <li key={o.key}>
                     <button
@@ -480,7 +553,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                 <button
                   type="button"
                   className={styles.filterLink}
-                  disabled={selectedCollections.size === 0}
+                  disabled={effectiveCollections.size === 0}
                   onClick={() => setSelectedCollections(new Set())}
                 >
                   Any
@@ -489,7 +562,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
             </div>
             <ul className={styles.filterToggleList} aria-label="Collection">
               {collectionOptions.map((o) => {
-                const on = selectedCollections.has(o.key);
+                const on = effectiveCollections.has(o.key);
                 return (
                   <li key={o.key}>
                     <button
@@ -563,31 +636,41 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
           <ul className={styles.ul}>
             {filtered.map((a) => (
               <li key={a.slug} className={styles.li}>
-                <button
-                  type="button"
-                  className={styles.item}
-                  onClick={() => setSelectedSlug(a.slug)}
-                  onMouseEnter={() => setHoveredSlug(a.slug)}
-                  onMouseLeave={() => setHoveredSlug(undefined)}
-                  onFocus={() => setHoveredSlug(a.slug)}
-                  onBlur={() => setHoveredSlug(undefined)}
-                >
-                  <span className={styles.itemRow}>
-                    <span
-                      className={styles.listDot}
-                      style={{
-                        background: markerColorForCategory(a.category),
-                      }}
-                      aria-hidden
-                    />
-                    <span className={styles.title}>{a.title}</span>
-                  </span>
-                  <span className={styles.meta}>
-                    {(a.category ?? "Artwork") +
-                      (a.year != null ? ` · ${a.year}` : "") +
-                      (a.address ? ` · ${a.address}` : "")}
-                  </span>
-                </button>
+                <div className={styles.listItemRow}>
+                  <button
+                    type="button"
+                    className={styles.item}
+                    onClick={() => setSelectedSlug(a.slug)}
+                    onMouseEnter={() => setHoveredSlug(a.slug)}
+                    onMouseLeave={() => setHoveredSlug(undefined)}
+                    onFocus={() => setHoveredSlug(a.slug)}
+                    onBlur={() => setHoveredSlug(undefined)}
+                  >
+                    <span className={styles.itemRow}>
+                      <span
+                        className={styles.listDot}
+                        style={{
+                          background: markerColorForCategory(a.category),
+                        }}
+                        aria-hidden
+                      />
+                      <span className={styles.title}>{a.title}</span>
+                    </span>
+                    <span className={styles.meta}>
+                      {(a.category ?? "Artwork") +
+                        (a.year != null ? ` · ${a.year}` : "") +
+                        (a.address ? ` · ${a.address}` : "")}
+                    </span>
+                  </button>
+                  <Link
+                    href={`/art/${a.slug}`}
+                    className={styles.detailLink}
+                    prefetch
+                    transitionTypes={["nav-forward"]}
+                  >
+                    Details
+                  </Link>
+                </div>
               </li>
             ))}
           </ul>
@@ -597,5 +680,6 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
         </div>
       </aside>
     </div>
+    </ViewTransition>
   );
 }

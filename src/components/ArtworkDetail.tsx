@@ -4,7 +4,8 @@ import styles from "./ArtworkDetail.module.css";
 
 type Props = {
   artwork: Artwork;
-  variant?: "full" | "embed";
+  /** panel: sits inside floating glass chrome (matches map list panel treatment) */
+  variant?: "full" | "embed" | "panel";
 };
 
 export function ArtworkDetail({ artwork, variant = "full" }: Props) {
@@ -12,23 +13,15 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
     <article className={styles.card} data-variant={variant}>
       <header className={styles.header}>
         <div>
-          <p className={styles.kicker}>Public Art</p>
           <h1 className={styles.title}>{artwork.title}</h1>
           {artwork.category ? (
             <p className={styles.meta}>{artwork.category}</p>
           ) : null}
-          {[artwork.year, artwork.artist].filter(Boolean).length ? (
-            <p className={styles.meta}>
-              {[artwork.year != null ? String(artwork.year) : null, artwork.artist]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          ) : null}
         </div>
       </header>
 
-      {artwork.image ? (
-        <div className={styles.imageWrap}>
+      <div className={styles.imageWrap}>
+        {artwork.image ? (
           <Image
             src={artwork.image}
             alt={artwork.title}
@@ -36,14 +29,45 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
             sizes="(max-width: 900px) 100vw, 720px"
             className={styles.image}
           />
-        </div>
-      ) : null}
+        ) : (
+          <div
+            className={styles.imagePlaceholder}
+            role="img"
+            aria-label="Photo not yet available"
+          >
+            <span className={styles.placeholderInner} aria-hidden="true">
+              Photo coming soon
+            </span>
+          </div>
+        )}
+      </div>
 
       {artwork.address ? <p className={styles.address}>{artwork.address}</p> : null}
 
+      {artwork.artist ? (
+        <section className={styles.placement} aria-label="Artist">
+          <dl className={styles.placementList}>
+            <div>
+              <dt>Artist</dt>
+              <dd>{artwork.artist}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {artwork.description ? (
+        <section className={styles.placement} aria-label="Description">
+          <dl className={styles.placementList}>
+            <div>
+              <dt>Description</dt>
+              <dd className={styles.descriptionDd}>{artwork.description}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
       {artwork.commission || artwork.collection ? (
         <section className={styles.placement} aria-label="Placement">
-          <h2 className={styles.placementHeading}>Placement</h2>
           <dl className={styles.placementList}>
             {artwork.commission ? (
               <div>
@@ -61,30 +85,16 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
         </section>
       ) : null}
 
-      {artwork.description ? (
-        <div className={styles.description}>
-          <p>{artwork.description}</p>
-        </div>
+      {artwork.year != null ? (
+        <section className={styles.placement} aria-label="Year">
+          <dl className={styles.placementList}>
+            <div>
+              <dt>Year</dt>
+              <dd>{artwork.year}</dd>
+            </div>
+          </dl>
+        </section>
       ) : null}
-
-      {artwork.externalUrl ? (
-        <p className={styles.external}>
-          <a href={artwork.externalUrl} rel="noopener noreferrer">
-            More information
-          </a>
-        </p>
-      ) : null}
-
-      <dl className={styles.coords}>
-        <div>
-          <dt>Latitude</dt>
-          <dd>{artwork.lat}</dd>
-        </div>
-        <div>
-          <dt>Longitude</dt>
-          <dd>{artwork.lng}</dd>
-        </div>
-      </dl>
     </article>
   );
 }

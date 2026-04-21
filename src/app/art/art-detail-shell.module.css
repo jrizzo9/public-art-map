@@ -1,0 +1,211 @@
+/* Continuity with map home: glass panel on map-like chrome — full content height, page scrolls */
+
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+  isolation: isolate;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  /* Breathing room on all sides; top clears fixed logo */
+  padding-top: max(56px, calc(env(safe-area-inset-top, 0px) + 48px));
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 20px));
+  padding-left: max(20px, calc(env(safe-area-inset-left, 0px) + 12px));
+  padding-right: max(20px, calc(env(safe-area-inset-right, 0px) + 12px));
+}
+
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Fallback when Static Images aren’t available (no token / coords) */
+.bgFallback {
+  /* Map-adjacent tones: cool “water/sky”, warm land, subtle vegetation */
+  background:
+    radial-gradient(
+      ellipse 130% 95% at 72% 18%,
+      oklch(0.76 0.052 228 / 0.42),
+      transparent 54%
+    ),
+    radial-gradient(
+      ellipse 95% 72% at 14% 78%,
+      oklch(0.86 0.04 92 / 0.2),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 85% 60% at 52% 88%,
+      oklch(0.74 0.038 205 / 0.22),
+      transparent 62%
+    ),
+    linear-gradient(
+      155deg,
+      oklch(0.83 0.024 246) 0%,
+      oklch(0.88 0.019 238) 40%,
+      oklch(0.86 0.026 232) 70%,
+      oklch(0.82 0.03 218) 100%
+    );
+}
+
+.bgFallback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* Mapbox Static snapshot — inline backgroundImage + light wash so the glass panel stays legible */
+.bgWithMap {
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-color: oklch(0.82 0.02 235);
+}
+
+.bgWithMap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.48),
+    rgb(0 0 0 / 0.58),
+    rgb(0 0 0 / 0.68)
+  );
+  pointer-events: none;
+}
+
+.bgWithMap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.brandLogo {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  z-index: 3;
+  display: block;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  transition: opacity 0.15s ease;
+}
+
+.brandLogo:hover {
+  opacity: 0.88;
+}
+
+.brandLogo:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--background) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
+}
+
+.brandLogoImg {
+  height: 40px;
+  width: auto;
+  max-width: min(220px, calc(100vw - 48px));
+  display: block;
+  object-fit: contain;
+}
+
+.panel {
+  --panel-fg: var(--foreground);
+  --panel-muted: var(--muted-foreground);
+  --panel-caption: color-mix(in oklch, var(--muted-foreground) 92%, transparent);
+  --panel-border: var(--border);
+  --panel-body: 13px;
+  --panel-caption-size: 12px;
+  --panel-title: clamp(17px, 2.6vw, 18px);
+
+  position: relative;
+  z-index: 2;
+  /* Center in view when content is short; grows with content and scrolls the page when tall */
+  margin-top: auto;
+  margin-bottom: auto;
+  width: min(860px, 100%);
+  max-width: 100%;
+  border-radius: calc(var(--radius) + 10px);
+  border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  flex-direction: column;
+
+  font-size: var(--panel-body);
+  line-height: 1.45;
+  color: var(--panel-fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.panelInner {
+  padding: 10px 10px 16px 10px;
+}
+
+.backRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 10px 6px 10px;
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
+  flex-shrink: 0;
+}
+
+.productTitle {
+  margin: 0;
+  font-size: var(--panel-title);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: color-mix(in oklch, var(--foreground) 92%, transparent);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--border) 90%, transparent);
+  background: color-mix(in oklch, var(--card) 68%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in oklch, var(--foreground) 82%, transparent);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.backLink:hover {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--primary) 11%, var(--card));
+  color: var(--panel-fg);
+}
+
+.backLink:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
+}

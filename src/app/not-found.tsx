@@ -10,6 +10,7 @@ export default function NotFound() {
       <Link
         href="/"
         className="mt-6 inline-block font-medium text-primary underline underline-offset-4 hover:opacity-90"
+        transitionTypes={["nav-back"]}
       >
         Back to map
       </Link>
