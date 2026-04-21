@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and apply a **vertical `offset`** so the marker and popup card sit better inside the padded map chrome after selection.
+- **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and use a **single smooth `flyTo`** with a vertical **`offset`** so the **popup card** (not just the marker) lands centered within the padded map chrome after selection.
 - Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
 - Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
 - Selection **flies straight** to the artwork (no intermediate refit-to-all-markers) and marker clicks stay selected (map background click no longer clears selection in the same gesture).
