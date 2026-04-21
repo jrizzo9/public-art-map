@@ -316,11 +316,16 @@ export function MapView({
 
     const narrow = map.getContainer().getBoundingClientRect().width < 640;
 
+    // Anchor bottom = bottom edge (and tip) sits at lnglat so the card is above the dot.
+    // Negative Y offset moves the popup up (Mapbox: negative is up); positive was pushing the tip through the marker on mobile.
+    const popupOffsetY = narrow ? -22 : -18;
+
     const popup = new mapboxgl.Popup({
+      anchor: "bottom",
       closeButton: false,
       closeOnClick: false,
-      maxWidth: "280px",
-      offset: narrow ? ([0, 28] as [number, number]) : 18,
+      maxWidth: narrow ? "min(280px, calc(100vw - 48px))" : "280px",
+      offset: [0, popupOffsetY] as [number, number],
     })
       .setLngLat([art.lng, art.lat])
       .setDOMContent(wrap)

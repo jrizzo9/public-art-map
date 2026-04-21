@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
 - Selection **flies straight** to the artwork (no intermediate refit-to-all-markers) and marker clicks stay selected (map background click no longer clears selection in the same gesture).
 - Fix production build failure caused by duplicate route definitions (removed legacy `/(site)` route group).
 - Fix production build failure from stray Tailwind PostCSS config (`postcss.config.mjs`) requiring `@tailwindcss/postcss`.

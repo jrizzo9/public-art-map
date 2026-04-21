@@ -11,7 +11,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map (vertically centered, compact).
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~half the viewport) for search and the list; selecting an artwork flies the marker to about the **middle of the clear map** (slightly below center) so the popup can sit **above** the dot with map context underneath.
-- Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** with title, optional image, and links to details/embed.
+- Choosing an artwork from the list or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** (tip points at the marker) with title, optional image, and links to details/embed.
 - Click empty map area to clear the popup selection.
 
 ## Sheet contract (columns)
