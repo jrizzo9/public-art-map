@@ -16,6 +16,7 @@ type FacetOption = { key: string; label: string };
 
 const UNCATEGORIZED_KEY = "__uncategorized__";
 const NO_COMMISSION_KEY = "__none__";
+const NO_COLLECTION_KEY = "__none__";
 
 function categoryFacetKey(a: Artwork): string {
   const t = a.category?.trim();
@@ -27,13 +28,167 @@ function commissionFacetKey(a: Artwork): string {
   return t ? t.toLowerCase() : NO_COMMISSION_KEY;
 }
 
+function collectionFacetKey(a: Artwork): string {
+  const t = a.collection?.trim();
+  return t ? t.toLowerCase() : NO_COLLECTION_KEY;
+}
+
+type YearParsed = {
+  ymin: number | null;
+  ymax: number | null;
+  yminOk: boolean;
+  ymaxOk: boolean;
+  hasYearFilter: boolean;
+};
+
+function parseYearInputs(yearMin: string, yearMax: string): YearParsed {
+  let ymin = yearMin.trim() === "" ? null : Number(yearMin);
+  let ymax = yearMax.trim() === "" ? null : Number(yearMax);
+  const yminOk = ymin !== null && !Number.isNaN(ymin);
+  const ymaxOk = ymax !== null && !Number.isNaN(ymax);
+  if (yminOk && ymaxOk && ymin! > ymax!) {
+    const t = ymin;
+    ymin = ymax;
+    ymax = t;
+  }
+  const hasYearFilter = yminOk || ymaxOk;
+  return { ymin, ymax, yminOk, ymaxOk, hasYearFilter };
+}
+
+function artworkMatchesYear(a: Artwork, y: YearParsed): boolean {
+  if (!y.hasYearFilter) return true;
+  if (a.year == null || !Number.isFinite(a.year)) return false;
+  if (y.yminOk && a.year < y.ymin!) return false;
+  if (y.ymaxOk && a.year > y.ymax!) return false;
+  return true;
+}
+
+/** Which facet's own selections to ignore when listing options for that facet */
+type OmitFacet = "category" | "commission" | "collection";
+
+function artworkMatchesOtherFacetFilters(
+  a: Artwork,
+  selectedCategories: Set<string>,
+  selectedCommissions: Set<string>,
+  selectedCollections: Set<string>,
+  omit: OmitFacet,
+): boolean {
+  if (
+    omit !== "category" &&
+    selectedCategories.size > 0 &&
+    !selectedCategories.has(categoryFacetKey(a))
+  ) {
+    return false;
+  }
+  if (
+    omit !== "commission" &&
+    selectedCommissions.size > 0 &&
+    !selectedCommissions.has(commissionFacetKey(a))
+  ) {
+    return false;
+  }
+  if (
+    omit !== "collection" &&
+    selectedCollections.size > 0 &&
+    !selectedCollections.has(collectionFacetKey(a))
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const x of a) if (!b.has(x)) return false;
+  return true;
+}
+
+function pruneSelectionToAllowed(
+  prev: Set<string>,
+  allowedKeys: Iterable<string>,
+): Set<string> {
+  const allowed = new Set(allowedKeys);
+  const next = new Set<string>();
+  for (const k of prev) if (allowed.has(k)) next.add(k);
+  return setsEqual(prev, next) ? prev : next;
+}
+
 export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
 
+  /** Empty = do not filter by this facet; non-empty = only matching artworks */
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => new Set());
+  const [selectedCommissions, setSelectedCommissions] = useState<Set<string>>(() => new Set());
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(() => new Set());
+  const [yearMin, setYearMin] = useState("");
+  const [yearMax, setYearMax] = useState("");
+
+  const yearParsed = useMemo(
+    () => parseYearInputs(yearMin, yearMax),
+    [yearMin, yearMax],
+  );
+
+  const poolForCategoryOptions = useMemo(() => {
+    return artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(
+          a,
+          selectedCategories,
+          selectedCommissions,
+          selectedCollections,
+          "category",
+        ) && artworkMatchesYear(a, yearParsed),
+    );
+  }, [
+    artworks,
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+    yearParsed,
+  ]);
+
+  const poolForCommissionOptions = useMemo(() => {
+    return artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(
+          a,
+          selectedCategories,
+          selectedCommissions,
+          selectedCollections,
+          "commission",
+        ) && artworkMatchesYear(a, yearParsed),
+    );
+  }, [
+    artworks,
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+    yearParsed,
+  ]);
+
+  const poolForCollectionOptions = useMemo(() => {
+    return artworks.filter(
+      (a) =>
+        artworkMatchesOtherFacetFilters(
+          a,
+          selectedCategories,
+          selectedCommissions,
+          selectedCollections,
+          "collection",
+        ) && artworkMatchesYear(a, yearParsed),
+    );
+  }, [
+    artworks,
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+    yearParsed,
+  ]);
+
   const categoryOptions = useMemo((): FacetOption[] => {
     const labels = new Map<string, string>();
-    for (const a of artworks) {
+    for (const a of poolForCategoryOptions) {
       const key = categoryFacetKey(a);
       if (labels.has(key)) continue;
       labels.set(key, a.category?.trim() || "Uncategorized");
@@ -41,11 +196,11 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     return [...labels.entries()]
       .map(([key, label]) => ({ key, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [artworks]);
+  }, [poolForCategoryOptions]);
 
   const commissionOptions = useMemo((): FacetOption[] => {
     const labels = new Map<string, string>();
-    for (const a of artworks) {
+    for (const a of poolForCommissionOptions) {
       const key = commissionFacetKey(a);
       if (labels.has(key)) continue;
       labels.set(key, a.commission?.trim() || "Not listed");
@@ -53,7 +208,31 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     return [...labels.entries()]
       .map(([key, label]) => ({ key, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [artworks]);
+  }, [poolForCommissionOptions]);
+
+  const collectionOptions = useMemo((): FacetOption[] => {
+    const labels = new Map<string, string>();
+    for (const a of poolForCollectionOptions) {
+      const key = collectionFacetKey(a);
+      if (labels.has(key)) continue;
+      labels.set(key, a.collection?.trim() || "Not listed");
+    }
+    return [...labels.entries()]
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [poolForCollectionOptions]);
+
+  useEffect(() => {
+    setSelectedCategories((prev) =>
+      pruneSelectionToAllowed(prev, categoryOptions.map((o) => o.key)),
+    );
+    setSelectedCommissions((prev) =>
+      pruneSelectionToAllowed(prev, commissionOptions.map((o) => o.key)),
+    );
+    setSelectedCollections((prev) =>
+      pruneSelectionToAllowed(prev, collectionOptions.map((o) => o.key)),
+    );
+  }, [categoryOptions, commissionOptions, collectionOptions]);
 
   const yearBounds = useMemo(() => {
     const years = artworks
@@ -63,45 +242,38 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     return { min: Math.min(...years), max: Math.max(...years) };
   }, [artworks]);
 
-  const [disabledCategories, setDisabledCategories] = useState<Set<string>>(() => new Set());
-  const [disabledCommissions, setDisabledCommissions] = useState<Set<string>>(() => new Set());
-  const [yearMin, setYearMin] = useState("");
-  const [yearMax, setYearMax] = useState("");
-
   const filtered = useMemo(() => {
-    let ymin = yearMin.trim() === "" ? null : Number(yearMin);
-    let ymax = yearMax.trim() === "" ? null : Number(yearMax);
-    const yminOk = ymin !== null && !Number.isNaN(ymin);
-    const ymaxOk = ymax !== null && !Number.isNaN(ymax);
-    if (yminOk && ymaxOk && ymin! > ymax!) {
-      const t = ymin;
-      ymin = ymax;
-      ymax = t;
-    }
-    const hasYearFilter = yminOk || ymaxOk;
-
     return artworks.filter((a) => {
-      if (disabledCategories.has(categoryFacetKey(a))) return false;
-      if (disabledCommissions.has(commissionFacetKey(a))) return false;
-
-      if (hasYearFilter) {
-        if (a.year == null || !Number.isFinite(a.year)) return false;
-        if (yminOk && a.year < ymin!) return false;
-        if (ymaxOk && a.year > ymax!) return false;
+      if (
+        selectedCategories.size > 0 &&
+        !selectedCategories.has(categoryFacetKey(a))
+      ) {
+        return false;
       }
-
-      return true;
+      if (
+        selectedCommissions.size > 0 &&
+        !selectedCommissions.has(commissionFacetKey(a))
+      ) {
+        return false;
+      }
+      if (
+        selectedCollections.size > 0 &&
+        !selectedCollections.has(collectionFacetKey(a))
+      ) {
+        return false;
+      }
+      return artworkMatchesYear(a, yearParsed);
     });
   }, [
     artworks,
-    disabledCategories,
-    disabledCommissions,
-    yearMin,
-    yearMax,
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+    yearParsed,
   ]);
 
   const toggleCategory = useCallback((key: string) => {
-    setDisabledCategories((prev) => {
+    setSelectedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -110,7 +282,16 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   }, []);
 
   const toggleCommission = useCallback((key: string) => {
-    setDisabledCommissions((prev) => {
+    setSelectedCommissions((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const toggleCollection = useCallback((key: string) => {
+    setSelectedCollections((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -119,22 +300,17 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
   }, []);
 
   const clearFilters = useCallback(() => {
-    setDisabledCategories(new Set());
-    setDisabledCommissions(new Set());
+    setSelectedCategories(new Set());
+    setSelectedCommissions(new Set());
+    setSelectedCollections(new Set());
     setYearMin("");
     setYearMax("");
   }, []);
 
-  const categoriesAllOn =
-    categoryOptions.length > 0 &&
-    categoryOptions.every((o) => !disabledCategories.has(o.key));
-  const commissionsAllOn =
-    commissionOptions.length > 0 &&
-    commissionOptions.every((o) => !disabledCommissions.has(o.key));
-
   const activeFilterCount =
-    disabledCategories.size +
-    disabledCommissions.size +
+    selectedCategories.size +
+    selectedCommissions.size +
+    selectedCollections.size +
     (yearMin.trim() !== "" || yearMax.trim() !== "" ? 1 : 0);
 
   const onSelectArtwork = useCallback((slug: string) => {
@@ -152,7 +328,13 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
       return;
     }
     setSelectedSlug(undefined);
-  }, [disabledCategories, disabledCommissions, yearMin, yearMax]);
+  }, [
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+    yearMin,
+    yearMax,
+  ]);
 
   return (
     <div className={styles.shell}>
@@ -201,26 +383,16 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                 <button
                   type="button"
                   className={styles.filterLink}
-                  disabled={categoriesAllOn}
-                  onClick={() => setDisabledCategories(new Set())}
+                  disabled={selectedCategories.size === 0}
+                  onClick={() => setSelectedCategories(new Set())}
                 >
-                  All
-                </button>
-                <button
-                  type="button"
-                  className={styles.filterLink}
-                  disabled={categoryOptions.length === 0}
-                  onClick={() =>
-                    setDisabledCategories(new Set(categoryOptions.map((o) => o.key)))
-                  }
-                >
-                  None
+                  Any
                 </button>
               </div>
             </div>
             <ul className={styles.filterToggleList} aria-label="Categories">
               {categoryOptions.map((o) => {
-                const on = !disabledCategories.has(o.key);
+                const on = selectedCategories.has(o.key);
                 const dotColor =
                   o.key === UNCATEGORIZED_KEY
                     ? markerColorForCategory(undefined)
@@ -254,26 +426,16 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                 <button
                   type="button"
                   className={styles.filterLink}
-                  disabled={commissionsAllOn}
-                  onClick={() => setDisabledCommissions(new Set())}
+                  disabled={selectedCommissions.size === 0}
+                  onClick={() => setSelectedCommissions(new Set())}
                 >
-                  All
-                </button>
-                <button
-                  type="button"
-                  className={styles.filterLink}
-                  disabled={commissionOptions.length === 0}
-                  onClick={() =>
-                    setDisabledCommissions(new Set(commissionOptions.map((o) => o.key)))
-                  }
-                >
-                  None
+                  Any
                 </button>
               </div>
             </div>
             <ul className={styles.filterToggleList} aria-label="Commission">
               {commissionOptions.map((o) => {
-                const on = !disabledCommissions.has(o.key);
+                const on = selectedCommissions.has(o.key);
                 return (
                   <li key={o.key}>
                     <button
@@ -283,6 +445,39 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                       }`}
                       aria-pressed={on}
                       onClick={() => toggleCommission(o.key)}
+                    >
+                      <span className={styles.filterToggleText}>{o.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className={styles.filterRow}>
+              <span className={styles.caption}>Collection</span>
+              <div className={styles.filterActions}>
+                <button
+                  type="button"
+                  className={styles.filterLink}
+                  disabled={selectedCollections.size === 0}
+                  onClick={() => setSelectedCollections(new Set())}
+                >
+                  Any
+                </button>
+              </div>
+            </div>
+            <ul className={styles.filterToggleList} aria-label="Collection">
+              {collectionOptions.map((o) => {
+                const on = selectedCollections.has(o.key);
+                return (
+                  <li key={o.key}>
+                    <button
+                      type="button"
+                      className={`${styles.filterToggle}${
+                        on ? ` ${styles.filterToggleOn}` : ""
+                      }`}
+                      aria-pressed={on}
+                      onClick={() => toggleCollection(o.key)}
                     >
                       <span className={styles.filterToggleText}>{o.label}</span>
                     </button>

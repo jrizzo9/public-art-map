@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Map popup preview** for the selected artwork (title, image when present, links) anchored above the marker; selection clears when clicking the map background.
 - Smooth **fly-to** animation when selecting an artwork from the list or a marker.
 - Fullscreen Mapbox map with a floating left panel and marker highlighting.
-- **Filters** (collapsible): **category** (pill toggles + map colors), **commission**, and **year** range; badge and **Clear** when refinements are active.
+- **Filters** (collapsible): **category** (pill toggles + map colors), **commission**, **collection**, and **year** range; badge and **Clear** when refinements are active.
 - **Marker and list dot colors** by category (`category-colors`); fixed hues for **Decommissioned art**, **Sculptures**, and **Fountains** so they stay distinct from green-heavy hash slots.
 - Google Sheet **published CSV** ingestion with validation and flexible column mapping; optional **`image_id`** + **`NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE`** (`{id}`) when no direct image URL column.
 - Sheet-backed fields on artworks: **year**, **artist**, **commission**, **collection**, **external URL** (`url` / `link` / `website` column variants).
@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Home filters:** add **collection** (sheet column) beside category and commission; facet toggles start **unselected** (no filtering on that dimension until you pick chips); selecting chips **includes** matching artworks (**OR** within each facet). **Any** clears one facet only (replaces prior **All / None** controls).
+- **Responsive facet lists:** category, commission, and collection chips shown for each facet reflect the **other** facets plus the **year** range; selections that become invalid when options shrink are **pruned** automatically.
 - **Visual theme**: map panel, filters, list, artwork detail cards, embed layout, art detail route, and not-found page use shared **semantic tokens** (foreground, muted, primary, card, border, shadows, radius) instead of hardcoded grays and accent hex values.
 - Root fonts: **Inter**, **JetBrains Mono**, and **Source Serif 4** via `next/font/google` (replacing Geist) to match the theme stack.
 - Left panel: **pinned header** (title + Filters) with a **scrollable list** below; **Showing X of Y** stays at the bottom of the scroll area with smaller type.
