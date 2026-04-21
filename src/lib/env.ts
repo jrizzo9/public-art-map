@@ -10,6 +10,12 @@ export const env = {
   NEXT_PUBLIC_MAPBOX_TOKEN: () => optional("NEXT_PUBLIC_MAPBOX_TOKEN") ?? "",
   NEXT_PUBLIC_MAPBOX_STYLE_URL: () =>
     process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL ?? "",
+  /** If true, attempt to geocode address when lat/lng missing. */
+  GEOCODE_MISSING_COORDS: () => {
+    const raw = optional("GEOCODE_MISSING_COORDS");
+    if (!raw) return false;
+    return raw === "1" || raw.toLowerCase() === "true" || raw.toLowerCase() === "yes";
+  },
   /** 0 = fetch CSV on every request (no Next.js fetch cache). */
   REVALIDATE_SECONDS: () => {
     const raw = process.env.REVALIDATE_SECONDS;

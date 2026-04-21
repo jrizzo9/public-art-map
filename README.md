@@ -24,7 +24,7 @@ Your Google Sheet must have a header row and (at minimum) these columns:
 
 | Column | Required | Notes |
 |---|---:|---|
-| `slug` | yes | URL-safe, unique |
+| `slug` | no | URL-safe, unique. If omitted/blank, the app derives one from `title` (may change if the title changes). |
 | `title` | yes | |
 | `lat` | yes | decimal degrees |
 | `lng` | yes | decimal degrees |
@@ -56,6 +56,8 @@ NEXT_PUBLIC_MAPBOX_TOKEN="pk.XXXX"
 NEXT_PUBLIC_MAPBOX_STYLE_URL="mapbox://styles/..."
 # Seconds between CSV refetches (ISR). Use 0 for no cache—always fetch latest sheet.
 REVALIDATE_SECONDS="300"
+# If true, attempt to geocode from `address` when `lat`/`lng` are missing (best-effort).
+GEOCODE_MISSING_COORDS="false"
 # NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE="https://cdn.example.com/img/{id}.webp"
 EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 ```

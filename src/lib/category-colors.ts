@@ -22,6 +22,9 @@ const PALETTE = [
 const CATEGORY_COLOR_OVERRIDES: Record<string, string> = {
   "decommissioned art": "#78716c",
   decommissioned: "#78716c",
+  murals: "#ffd02e",
+  mural: "#ffd02e",
+  other: "#2e8bfd",
   sculptures: "#c2410c",
   sculpture: "#c2410c",
   fountains: "#0369a1",

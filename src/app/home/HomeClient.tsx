@@ -649,9 +649,13 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                       <span className={styles.title}>{a.title}</span>
                     </span>
                     <span className={styles.meta}>
-                      {(a.category ?? "Artwork") +
-                        (a.year != null ? ` · ${a.year}` : "") +
-                        (a.address ? ` · ${a.address}` : "")}
+                      {[
+                        a.collection,
+                        a.artist,
+                        a.year != null ? String(a.year) : undefined,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </button>
                   <Link

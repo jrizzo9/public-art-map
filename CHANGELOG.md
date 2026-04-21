@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Address-based fallback geocoding (Mapbox) for sheet rows missing `lat`/`lng` (`GEOCODE_MISSING_COORDS=true`).
+- Title-derived slug generation when the sheet `slug` column is blank (with de-duping suffixes).
 - Artwork detail page **Nearby art** section (sorted by distance) with thumbnail tiles; distance is shown inline with the title.
 - Geo helpers (`haversineDistanceKm`, `kmToMiles`) for computing “nearby” distances.
 - **`SiteBrandBar`** (`src/components/SiteBrandBar.tsx`) and **`src/lib/site.ts`** (`SITE_PRODUCT_NAME`, default metadata title template) so **Public Art Map** + Creative Waco logo stay consistent on **home**, **`/art/[slug]`**, **404**, and the **embed** artwork header link.
@@ -31,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Stop treating the sheet `id` column as a slug source (only use `slug`, otherwise derive from `title`).
+- Home list meta line now shows **Collection, Artist, Year** (no category/address).
+- Category color overrides: **Murals** (yellow) and **Other** (blue) stay visually distinct.
 - Show full artwork images (no crop) in the **detail panel**, **Nearby art** thumbnails, and the **map popup** preview.
 - Increase the **map popup** preview size, with responsive sizing on mobile to avoid overflow.
 - **Mobile home panel (bottom sheet):** reduce height from ~50% to ~30% of the viewport.

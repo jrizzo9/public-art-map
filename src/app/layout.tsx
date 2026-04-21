@@ -30,6 +30,10 @@ export const metadata: Metadata = {
     template: SITE_METADATA_TITLE_TEMPLATE,
   },
   description: "Explore public art in Waco with location-based detail pages.",
+  icons: {
+    icon: [{ url: "/favicon.png" }],
+    apple: [{ url: "/favicon.png" }],
+  },
 };
 
 export default function RootLayout({

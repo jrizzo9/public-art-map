@@ -21,6 +21,8 @@ export type Artwork = {
   collection?: string;
 };
 
+type LatLng = { lat: number; lng: number };
+
 const rawArtworkSchema = z.object({
   slug: z.string().trim().min(1),
   title: z.string().trim().min(1),
@@ -49,6 +51,17 @@ const rawArtworkSchema = z.object({
   commission: z.string().optional(),
   collection: z.string().optional(),
 });
+
+const geocodeCache = new Map<string, LatLng | null>();
+
+function slugify(input: string): string {
+  return input
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 function normalizeRowKeys(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -88,7 +101,8 @@ function resolveImageField(row: Record<string, unknown>): unknown {
 
 function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, unknown> {
   return {
-    slug: pickFirst(row, ["slug", "id"]),
+    // IMPORTANT: do not use `id` as slug. Prefer explicit `slug` column; otherwise derive from title.
+    slug: pickFirst(row, ["slug"]),
     title: pickFirst(row, ["title", "name"]),
     lat: pickFirst(row, ["lat", "latitude"]),
     lng: pickFirst(row, ["lng", "lon", "longitude", "long"]),
@@ -107,6 +121,59 @@ function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, u
     ]),
     collection: pickFirst(row, ["collection"]),
   };
+}
+
+function normalizeGeocodeQuery(address: string): string {
+  // Keep it simple & stable for caching. Add locality to improve match quality.
+  const cleaned = address.trim().replace(/\s+/g, " ");
+  if (!cleaned) return "";
+  return cleaned.toLowerCase().includes("waco") ? cleaned : `${cleaned}, Waco, TX`;
+}
+
+async function geocodeAddress(address: string): Promise<LatLng | null> {
+  if (!env.GEOCODE_MISSING_COORDS()) return null;
+  const token = env.NEXT_PUBLIC_MAPBOX_TOKEN();
+  if (!token) return null;
+
+  const query = normalizeGeocodeQuery(address);
+  if (!query) return null;
+
+  const cached = geocodeCache.get(query);
+  if (cached !== undefined) return cached;
+
+  const url = new URL(
+    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
+  );
+  url.searchParams.set("access_token", token);
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("types", "address,poi,place,locality");
+
+  try {
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) {
+      geocodeCache.set(query, null);
+      return null;
+    }
+    const json = (await res.json()) as {
+      features?: Array<{ center?: [number, number] }>;
+    };
+    const center = json.features?.[0]?.center;
+    if (!center || center.length !== 2) {
+      geocodeCache.set(query, null);
+      return null;
+    }
+    const [lng, lat] = center;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      geocodeCache.set(query, null);
+      return null;
+    }
+    const ll = { lat, lng };
+    geocodeCache.set(query, ll);
+    return ll;
+  } catch {
+    geocodeCache.set(query, null);
+    return null;
+  }
 }
 
 async function fetchCsvText(): Promise<string> {
@@ -135,11 +202,53 @@ export async function getArtworks(): Promise<Artwork[]> {
   });
 
   const results: Artwork[] = [];
+  const usedSlugs = new Set<string>();
   for (const row of parsed.data) {
     const normalized = normalizeRowKeys(row);
     const coerced = coerceRowToArtworkShape(normalized);
+
+     // If lat/lng are missing but we have an address, optionally geocode.
+     const maybeLat = coerced.lat;
+     const maybeLng = coerced.lng;
+     const missingCoords =
+       maybeLat === undefined ||
+       maybeLat === null ||
+       (typeof maybeLat === "string" && !maybeLat.trim()) ||
+       maybeLng === undefined ||
+       maybeLng === null ||
+       (typeof maybeLng === "string" && !maybeLng.trim());
+
+     if (missingCoords) {
+       const address = coerced.address;
+       if (typeof address === "string" && address.trim()) {
+         const ll = await geocodeAddress(address);
+         if (ll) {
+           coerced.lat = ll.lat;
+           coerced.lng = ll.lng;
+         }
+       }
+     }
+
+     // If id/slug is missing, derive from title (best effort).
+     const rawSlug = coerced.slug;
+     const hasSlug =
+       typeof rawSlug === "string" ? Boolean(rawSlug.trim()) : rawSlug !== undefined;
+     if (!hasSlug) {
+       const title = coerced.title;
+       if (typeof title === "string" && title.trim()) {
+         const base = slugify(title) || "artwork";
+         let candidate = base;
+         let i = 2;
+         while (usedSlugs.has(candidate)) {
+           candidate = `${base}-${i++}`;
+         }
+         coerced.slug = candidate;
+       }
+     }
+
     const maybe = rawArtworkSchema.safeParse(coerced);
     if (!maybe.success) continue;
+     usedSlugs.add(maybe.data.slug);
     results.push(maybe.data);
   }
 
