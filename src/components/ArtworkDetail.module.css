@@ -53,9 +53,50 @@
   color: rgba(246, 247, 251, 0.8);
 }
 
+.placement {
+  margin: 14px 0 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.placementHeading {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(246, 247, 251, 0.72);
+}
+
+.placementList {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.placementList dt {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(246, 247, 251, 0.65);
+}
+
+.placementList dd {
+  margin: 4px 0 0 0;
+  color: rgba(246, 247, 251, 0.92);
+}
+
 .description {
   margin-top: 8px;
   color: rgba(246, 247, 251, 0.9);
+}
+
+.external {
+  margin: 12px 0 0 0;
+}
+
+.external a {
+  color: #a8c8ff;
+  text-decoration: underline;
 }
 
 .coords {

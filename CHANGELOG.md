@@ -11,16 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Map popup preview** for the selected artwork (title, image when present, links) anchored above the marker; selection clears when clicking the map background.
 - Smooth **fly-to** animation when selecting an artwork from the list or a marker.
-- Fullscreen Mapbox map with a floating left panel, search, and marker highlighting.
-- Google Sheet **published CSV** ingestion with validation and flexible column mapping.
+- Fullscreen Mapbox map with a floating left panel and marker highlighting.
+- **Filters** (collapsible): **category** (pill toggles + map colors), **commission**, and **year** range; badge and **Clear** when refinements are active.
+- **Marker and list dot colors** by category (`category-colors`); fixed hues for **Decommissioned art**, **Sculptures**, and **Fountains** so they stay distinct from green-heavy hash slots.
+- Google Sheet **published CSV** ingestion with validation and flexible column mapping; optional **`image_id`** + **`NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE`** (`{id}`) when no direct image URL column.
+- Sheet-backed fields on artworks: **year**, **artist**, **commission**, **collection**, **external URL** (`url` / `link` / `website` column variants).
+- Artwork detail **Placement** section (commission + collection), **year · artist** under the title when present, and **More information** link when `externalUrl` is set.
 - SEO routes for artwork detail pages (`/art/[slug]`) and Webflow-friendly embed routes (`/embed/art/[slug]`).
 - `sitemap.xml` + `robots.txt` generation based on current sheet rows.
 
 ### Changed
 
-- **Mobile layout:** **fullscreen map** with a **floating bottom sheet** (~50% height) for the list; fly-to frames the marker toward the **middle** of the clear map above the sheet (slightly lower than strict center) so the popup sits above the pin with context below (not hidden under the sheet).
-- Left panel layout: vertically centered, tighter typography/spacing; subtitle and collapse control removed from the header.
-- Search input spacing under the field adjusted for clearer separation from the count row.
+- Left panel: **single scrollbar** for title, filters, artwork list, and count (no separate scroll regions); **Showing X of Y** pinned to the bottom with smaller type.
+- Panel typography and controls unified (pill toggles for filters vs checkbox lists).
+- **`REVALIDATE_SECONDS`**: **`0`** disables fetch caching (`cache: "no-store"`) for always-fresh CSV; otherwise ISR revalidation in seconds (default **300**).
+
+### Removed
+
+- **Free-text search** on the map home panel (refining is via filters only).
 
 ### Fixed
 
@@ -32,4 +40,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Restrict iframe embedding on `/embed/*` with `Content-Security-Policy: frame-ancestors` (defaults to Creative Waco domains, extensible via `EMBED_ALLOWED_ORIGINS`).
-

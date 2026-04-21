@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
 import { useEffect, useMemo, useRef } from "react";
+import { HIGHLIGHT_MARKER, markerColorForCategory } from "@/lib/category-colors";
 import type { Artwork } from "@/lib/sheet";
 
 /** Left column matches floating list panel (~340px) + edge breathing room; asymmetric vertical padding biases the focal point up/right. */
@@ -134,7 +135,7 @@ export function MapView({
       el.style.height = "14px";
       el.style.borderRadius = "999px";
       el.style.border = "2px solid #0b0d12";
-      el.style.background = "#ffd02e";
+      el.style.background = markerColorForCategory(art.category);
       el.style.boxShadow = "0 6px 18px rgba(0,0,0,0.2)";
       el.style.cursor = "pointer";
       el.addEventListener("click", (e) => {
@@ -165,7 +166,9 @@ export function MapView({
       const el = marker?.getElement() as HTMLElement | undefined;
       if (!el) continue;
       const isHighlighted = art.slug === (highlightSlug || selectedSlug);
-      el.style.background = isHighlighted ? "#ff4d2e" : "#ffd02e";
+      el.style.background = isHighlighted
+        ? HIGHLIGHT_MARKER
+        : markerColorForCategory(art.category);
     }
   }, [artworks, highlightSlug, selectedSlug]);
 

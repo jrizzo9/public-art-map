@@ -17,6 +17,13 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
           {artwork.category ? (
             <p className={styles.meta}>{artwork.category}</p>
           ) : null}
+          {[artwork.year, artwork.artist].filter(Boolean).length ? (
+            <p className={styles.meta}>
+              {[artwork.year != null ? String(artwork.year) : null, artwork.artist]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
         </div>
       </header>
 
@@ -34,10 +41,38 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
 
       {artwork.address ? <p className={styles.address}>{artwork.address}</p> : null}
 
+      {artwork.commission || artwork.collection ? (
+        <section className={styles.placement} aria-label="Placement">
+          <h2 className={styles.placementHeading}>Placement</h2>
+          <dl className={styles.placementList}>
+            {artwork.commission ? (
+              <div>
+                <dt>Commission</dt>
+                <dd>{artwork.commission}</dd>
+              </div>
+            ) : null}
+            {artwork.collection ? (
+              <div>
+                <dt>Collection</dt>
+                <dd>{artwork.collection}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </section>
+      ) : null}
+
       {artwork.description ? (
         <div className={styles.description}>
           <p>{artwork.description}</p>
         </div>
+      ) : null}
+
+      {artwork.externalUrl ? (
+        <p className={styles.external}>
+          <a href={artwork.externalUrl} rel="noopener noreferrer">
+            More information
+          </a>
+        </p>
       ) : null}
 
       <dl className={styles.coords}>

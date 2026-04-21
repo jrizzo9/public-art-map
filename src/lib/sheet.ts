@@ -11,6 +11,14 @@ export type Artwork = {
   image?: string;
   address?: string;
   category?: string;
+  /** Link from the sheet `URL` column (external page). */
+  externalUrl?: string;
+  year?: number;
+  artist?: string;
+  /** From sheet column `Commissioned By`. */
+  commission?: string;
+  /** From sheet column `Collection`. */
+  collection?: string;
 };
 
 const rawArtworkSchema = z.object({
@@ -27,6 +35,19 @@ const rawArtworkSchema = z.object({
     .transform((v) => (v ? v : undefined)),
   address: z.string().optional(),
   category: z.string().optional(),
+  externalUrl: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : undefined)),
+  year: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? undefined : v),
+    z.coerce.number().int().optional(),
+  ),
+  artist: z.string().optional(),
+  commission: z.string().optional(),
+  collection: z.string().optional(),
 });
 
 function normalizeRowKeys(row: Record<string, unknown>): Record<string, unknown> {
@@ -48,6 +69,23 @@ function pickFirst(row: Record<string, unknown>, keys: string[]): unknown {
   return undefined;
 }
 
+/** Prefer a direct image URL column; otherwise build from `image_id` + optional public template. */
+function resolveImageField(row: Record<string, unknown>): unknown {
+  const direct = pickFirst(row, ["image", "image_url", "photo", "photo_url"]);
+  if (typeof direct === "string" && direct.trim()) {
+    const t = direct.trim();
+    if (t.startsWith("http://") || t.startsWith("https://")) return t;
+  }
+
+  const imageId = pickFirst(row, ["image_id", "imageid"]);
+  const template = process.env.NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE?.trim();
+  if (typeof imageId === "string" && imageId.trim() && template) {
+    const id = encodeURIComponent(imageId.trim());
+    return template.replace(/\{id\}/g, id);
+  }
+  return undefined;
+}
+
 function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, unknown> {
   return {
     slug: pickFirst(row, ["slug", "id"]),
@@ -55,16 +93,32 @@ function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, u
     lat: pickFirst(row, ["lat", "latitude"]),
     lng: pickFirst(row, ["lng", "lon", "longitude", "long"]),
     description: pickFirst(row, ["description", "details", "about"]),
-    image: pickFirst(row, ["image", "image_url", "photo", "photo_url"]),
+    image: resolveImageField(row),
     address: pickFirst(row, ["address", "location", "street_address"]),
     category: pickFirst(row, ["category", "type"]),
+    externalUrl: pickFirst(row, ["external_url", "url", "link", "website"]),
+    year: pickFirst(row, ["year"]),
+    artist: pickFirst(row, ["artist"]),
+    commission: pickFirst(row, [
+      "commission",
+      "commissioned_by",
+      "commission_by",
+      "commissionedby",
+    ]),
+    collection: pickFirst(row, ["collection"]),
   };
 }
 
 async function fetchCsvText(): Promise<string> {
   const url = env.SHEET_CSV_URL();
   if (!url) return "";
-  const res = await fetch(url, { next: { revalidate: env.REVALIDATE_SECONDS() } });
+  const seconds = env.REVALIDATE_SECONDS();
+  const res = await fetch(
+    url,
+    seconds === 0
+      ? { cache: "no-store" }
+      : { next: { revalidate: seconds } },
+  );
   if (!res.ok) {
     throw new Error(`Failed to fetch SHEET_CSV_URL (${res.status})`);
   }
