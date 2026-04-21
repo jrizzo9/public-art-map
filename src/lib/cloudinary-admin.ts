@@ -36,8 +36,60 @@ export async function listCloudinaryImages({
   const apiKey = requireEnv("CLOUDINARY_API_KEY");
   const apiSecret = requireEnv("CLOUDINARY_API_SECRET");
 
+  return listCloudinaryResources({
+    cloudName,
+    apiKey,
+    apiSecret,
+    resourceType: "image",
+    maxResults,
+    nextCursor,
+    prefix,
+  });
+}
+
+export async function listCloudinaryRaw({
+  maxResults,
+  nextCursor,
+  prefix,
+}: {
+  maxResults?: number;
+  nextCursor?: string;
+  prefix?: string;
+}): Promise<CloudinaryListResult> {
+  const cloudName = requireEnv("CLOUDINARY_CLOUD_NAME");
+  const apiKey = requireEnv("CLOUDINARY_API_KEY");
+  const apiSecret = requireEnv("CLOUDINARY_API_SECRET");
+
+  return listCloudinaryResources({
+    cloudName,
+    apiKey,
+    apiSecret,
+    resourceType: "raw",
+    maxResults,
+    nextCursor,
+    prefix,
+  });
+}
+
+export async function listCloudinaryResources({
+  cloudName,
+  apiKey,
+  apiSecret,
+  resourceType,
+  maxResults,
+  nextCursor,
+  prefix,
+}: {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+  resourceType: "image" | "raw";
+  maxResults?: number;
+  nextCursor?: string;
+  prefix?: string;
+}): Promise<CloudinaryListResult> {
   const url = new URL(
-    `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/resources/image`,
+    `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/resources/${resourceType}`,
   );
   // Cloudinary Admin API requires `type` (usually "upload").
   url.searchParams.set("type", "upload");
@@ -58,8 +110,7 @@ export async function listCloudinaryImages({
       "error" in json &&
       typeof (json as { error?: unknown }).error === "object" &&
       (json as { error?: { message?: unknown } }).error !== null &&
-      typeof (json as { error?: { message?: unknown } }).error?.message ===
-        "string"
+      typeof (json as { error?: { message?: unknown } }).error?.message === "string"
         ? (json as { error: { message: string } }).error.message
         : `HTTP ${res.status}`;
     throw new Error(`Cloudinary list failed: ${msg}`);
@@ -82,4 +133,3 @@ export async function listCloudinaryImages({
         : undefined,
   };
 }
-

@@ -33,6 +33,16 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# google oauth (scripts)
+/scripts/google/credentials.json
+/scripts/google/token.json
+/scripts/google/token-sheets.json
+/scripts/google/download-manifest.json
+/scripts/google/cloudinary-upload-manifest.json
+
+# downloads
+/downloads/
+
 # vercel
 .vercel
 

@@ -6,12 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "download:drive-photos": "node scripts/download-drive-photos.mjs",
+    "images:web-ready": "node scripts/make-web-ready-images.mjs",
+    "cloudinary:upload-and-update-sheet": "node scripts/upload-web-ready-to-cloudinary-and-update-sheet.mjs",
+    "cloudinary:upload-web-ready": "node scripts/upload-web-ready-to-cloudinary.mjs",
+    "cloudinary:order-csv-like-public-sheet": "node scripts/reorder-cloudinary-csv-like-public-sheet.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "googleapis": "^156.0.0",
     "lucide-react": "^1.8.0",
     "mapbox-gl": "^3.22.0",
     "next": "16.2.4",
@@ -25,6 +31,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
     "@tailwindcss/postcss": "^4.2.3",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",

@@ -1,20 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getArtworks } from "@/lib/sheet";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
-import shellStyles from "./art-detail-shell.module.css";
-import { ArtDirectoryClient } from "./ArtDirectoryClient";
+import shellStyles from "@/app/art/art-detail-shell.module.css";
+import { SubmitArtPanel } from "./SubmitArtPanel";
 
 export const metadata: Metadata = {
-  title: "Artworks",
+  title: "Submit public art",
   description:
-    "Browse Creative Waco’s Public Art Map directory of artworks with individual detail pages.",
-  alternates: { canonical: "/art" },
+    "Suggest artwork for Creative Waco’s Public Art Map. Include photos and contact email.",
+  alternates: { canonical: "/submit" },
 };
 
-export default async function ArtIndexPage() {
-  const artworks = await getArtworks();
-
+export default function SubmitPage() {
   return (
     <div className={shellStyles.shell}>
       <div
@@ -34,21 +31,17 @@ export default async function ArtIndexPage() {
         <div className={`${shellStyles.panelInner} ${shellStyles.panelInnerIndex}`}>
           <header className="mb-4 space-y-1">
             <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              Artworks
+              Submit public art
             </h1>
             <p className="max-w-2xl text-pretty text-sm text-muted-foreground">
-              Browse public art in Waco —{" "}
-              <span className="font-medium text-foreground/90">
-                {artworks.length.toLocaleString()} artworks
-              </span>{" "}
-              with dedicated detail pages and location context.
+              Share artwork we should consider for the map. Photos upload to our media library;
+              include your email so we can follow up.
             </p>
           </header>
 
-          <ArtDirectoryClient artworks={artworks} />
+          <SubmitArtPanel />
         </div>
       </main>
     </div>
   );
 }
-

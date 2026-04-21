@@ -1,0 +1,163 @@
+/* Matches submit form controls + nearby card rhythm; inherits --panel-* from .panel */
+
+.toolbar {
+  margin-bottom: 10px;
+}
+
+/* Single flowing row on wide viewports; wraps to 2 lines on narrow screens */
+.toolbarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+
+.toolbarSearch {
+  flex: 1 1 200px;
+  min-width: min(100%, 160px);
+}
+
+.toolbarSelect {
+  flex: 0 1 132px;
+  min-width: 108px;
+  max-width: 100%;
+}
+
+/* Sort has long labels; collection/commission labels can be wide */
+.toolbarSelectWide {
+  flex: 0 1 168px;
+  min-width: 140px;
+  max-width: 100%;
+}
+
+.toolbarSelectStretch {
+  flex: 0 1 148px;
+  min-width: 120px;
+  max-width: 100%;
+}
+
+/* Tighter stacks than default submit fields */
+.toolbarField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.toolbarLabel {
+  font-size: var(--panel-caption-size);
+  font-weight: 500;
+  color: var(--panel-caption);
+  line-height: 1.2;
+}
+
+.toolbarInput {
+  width: 100%;
+  margin: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+  background: color-mix(in oklch, var(--card) 90%, transparent);
+  color: var(--panel-fg);
+  padding: 8px 10px;
+  outline: none;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.toolbarInput::placeholder {
+  color: color-mix(in oklch, var(--muted-foreground) 55%, transparent);
+}
+
+.toolbarInput:focus {
+  border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+}
+
+.selectNative {
+  cursor: pointer;
+}
+
+.directoryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.resetBtn {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in oklch, var(--border) 88%, transparent);
+  background: color-mix(in oklch, var(--card) 84%, transparent);
+  color: var(--panel-fg);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease;
+}
+
+.resetBtn:hover {
+  border-color: color-mix(in oklch, var(--primary) 48%, var(--border));
+  background: color-mix(in oklch, var(--primary) 12%, var(--card));
+}
+
+.resetBtn:focus-visible {
+  outline: none;
+  border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 18%, transparent);
+}
+
+.excerpt {
+  margin: 8px 0 0;
+  font-size: var(--panel-caption-size);
+  line-height: 1.45;
+  color: color-mix(in oklch, var(--muted-foreground) 95%, transparent);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.empty {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: calc(var(--radius) + 6px);
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 22%, transparent);
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: var(--panel-body);
+  font-weight: 700;
+  color: var(--panel-fg);
+}
+
+.emptySub {
+  margin: 8px 0 0;
+  font-size: var(--panel-caption-size);
+  line-height: 1.45;
+  color: color-mix(in oklch, var(--muted-foreground) 92%, transparent);
+}
+
+.emptyBtn {
+  margin-top: 14px;
+  border: 1px solid color-mix(in oklch, var(--primary) 42%, var(--border));
+  background: color-mix(in oklch, var(--primary) 18%, var(--card));
+  color: var(--panel-fg);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  font-size: var(--panel-body);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.emptyBtn:hover {
+  background: color-mix(in oklch, var(--primary) 28%, var(--card));
+}

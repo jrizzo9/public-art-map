@@ -1,0 +1,101 @@
+.editorShell {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(240px, 340px) 1fr;
+  align-items: start;
+}
+
+@media (max-width: 780px) {
+  .editorShell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formFields {
+  display: grid;
+  gap: 12px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 800;
+  opacity: 0.85;
+  margin: 0 0 8px;
+}
+
+.locationBlock {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--muted) 28%, transparent);
+}
+
+.locationToggle {
+  display: inline-flex;
+  gap: 0;
+  flex-wrap: wrap;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+}
+
+.locationToggle button {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 750;
+  color: color-mix(in oklch, var(--foreground) 82%, transparent);
+  background: transparent;
+}
+
+.locationToggle button:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--muted) 42%, transparent);
+}
+
+.locationToggle button[data-active="true"] {
+  background: color-mix(in oklch, var(--primary) 14%, var(--card));
+  color: var(--foreground);
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+
+.locationHint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.coordsRow {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 520px) {
+  .coordsRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.inputBase {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  color: var(--foreground);
+}
+
+.textareaBase {
+  resize: vertical;
+  min-height: 96px;
+}

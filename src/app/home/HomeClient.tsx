@@ -682,6 +682,15 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
           </p>
         </div>
       </aside>
+
+      <Link
+        href="/submit"
+        className={styles.floatingSubmitBtn}
+        prefetch
+        transitionTypes={["nav-forward"]}
+      >
+        Submit Public Art
+      </Link>
     </div>
     </ViewTransition>
   );

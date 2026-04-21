@@ -38,23 +38,34 @@
   }
 }
 
-.card {
+/* Shared shell for artwork tiles (nearby strip vs directory index) */
+.cardBase {
   position: relative;
   padding: 10px;
   border-radius: calc(var(--radius) + 6px);
   border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
   background: color-mix(in oklch, var(--card) 86%, transparent);
-  box-shadow: var(--shadow-sm);
   transition:
     transform 0.14s ease,
     border-color 0.14s ease,
     background 0.14s ease;
 }
 
-.card:hover {
+.cardBase:hover {
   transform: translateY(-1px);
   border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
   background: color-mix(in oklch, var(--primary) 8%, var(--card));
+}
+
+/* Detail page “Nearby art” */
+.card {
+  composes: cardBase;
+  box-shadow: var(--shadow-sm);
+}
+
+/* /art directory — same tile, no drop shadow */
+.cardFlat {
+  composes: cardBase;
 }
 
 .mainLink {

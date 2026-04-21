@@ -48,6 +48,13 @@
   grid-template-columns: repeat(12, 1fr);
 }
 
+/* Admin home: submissions + tools stacked (full width each). */
+.adminSections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .card {
   grid-column: span 12;
   border-radius: calc(var(--radius) + 10px);
@@ -148,11 +155,88 @@
   color: color-mix(in oklch, var(--muted-foreground) 92%, transparent);
 }
 
-@media (min-width: 860px) {
-  .cardHalf {
-    grid-column: span 6;
-  }
+.submissions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
+.submissionCard {
+  border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: color-mix(in oklch, var(--muted) 38%, transparent);
+}
+
+.submissionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.submissionTitle {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.submissionTime {
+  font-size: 11px;
+  color: color-mix(in oklch, var(--muted-foreground) 88%, transparent);
+}
+
+.submissionDl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.submissionDl dt {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in oklch, var(--muted-foreground) 88%, transparent);
+  margin: 0 0 2px;
+}
+
+.submissionDl dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.submissionDesc dd {
+  white-space: pre-wrap;
+}
+
+.submissionThumbLink {
+  display: inline-block;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+}
+
+.submissionThumb {
+  display: block;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+}
+
+.submissionId {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: color-mix(in oklch, var(--muted-foreground) 90%, transparent);
+}
+
+.submissionId code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+@media (min-width: 860px) {
   .kvs {
     grid-template-columns: 1fr 1fr;
   }

@@ -4,6 +4,7 @@ Next.js app that renders:
 - **Full map experience** at `/`
 - **Artwork directory** at `/art` (search + category filter + sort)
 - **SEO detail pages** at `/art/[slug]`
+- **Public submission** intake at `/submit`
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 
 Data comes from a **published Google Sheet CSV** (no Google credentials required).
@@ -67,6 +68,9 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # CLOUDINARY_API_KEY="..."
 # CLOUDINARY_API_SECRET="..."
 # CLOUDINARY_FOLDER="public-art-map"
+
+# Optional: authenticated sheet row patches (POST /api/admin/sheet-row)
+# See .env.example for Apps Script vs service-account options + ADMIN_SHEET_SECRET.
 ```
 
 Notes:
@@ -75,19 +79,19 @@ Notes:
 
 ## Admin + API
 
-- Admin status page: `http://localhost:3000/admin`
+- Admin page: `http://localhost:3000/admin` — **Public submissions** (recent Cloudinary-backed bundles) and **Edit map info** (UI scaffold for picking an artwork and editing fields; persistence wiring is optional via sheet API below).
+- Submit flow: `http://localhost:3000/submit` — uses `POST /api/submissions/prepare` and `POST /api/submissions/finalize` (requires Cloudinary env vars server-side).
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
+- Optional sheet updates: `POST /api/admin/sheet-row` (Bearer or `x-admin-sheet-secret` with `ADMIN_SHEET_SECRET`; configure Apps Script URL + token **or** Google Sheets API per `.env.example`).
 
-### Cloudinary admin (upload + library)
+### Cloudinary server routes (scripts + integrations)
 
-The `/admin` page includes a simple Cloudinary uploader (HEIC/PNG/JPG → JPEG) and a
-library view that lists images in your Cloudinary account (scoped to `CLOUDINARY_FOLDER`
-when set). The Cloudinary API credentials must be present server-side.
+These are **not** linked from `/admin` by default but remain available for uploads and tooling (scoped to `CLOUDINARY_FOLDER` when set). Requires Cloudinary credentials server-side.
 
-- Upload endpoint: `POST /api/admin/cloudinary`
-- Library endpoint: `GET /api/admin/cloudinary/library`
+- Upload (convert + upload): `POST /api/admin/cloudinary`
+- List library: `GET /api/admin/cloudinary/library`
 
 The artworks endpoint supports:
 
@@ -167,3 +171,13 @@ node scripts/migrate-drive-to-cloudinary.mjs
 ```
 
 Output: `gdrive-cloudinary-image-urls.csv`
+
+### Web-ready pipeline (pnpm)
+
+See `package.json` for full script names. Typical flow: download Drive assets → generate web-ready images → upload to Cloudinary (optionally refresh sheet references).
+
+```bash
+pnpm download:drive-photos
+pnpm images:web-ready
+pnpm cloudinary:upload-web-ready
+```

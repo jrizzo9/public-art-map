@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import styles from "./admin.module.css";
-import { ImageUploader } from "./ImageUploader";
-import { CloudinaryLibrary } from "./CloudinaryLibrary";
+import { MapInfoEditor } from "./map/MapInfoEditor";
+import { SubmissionsSection } from "./SubmissionsSection";
 
 export const metadata: Metadata = {
   title: "Admin",
@@ -15,26 +15,19 @@ export default async function AdminPage() {
       <div className={styles.wrap}>
         <SiteBrandBar />
 
-        <section className={styles.grid} aria-label="Cloudinary admin">
-          <div className={styles.card}>
-            <div className={styles.cardHeader}>
-              <p className={styles.cardTitle}>Upload image → Cloudinary</p>
-            </div>
-            <div className={styles.cardBody}>
-              <p className={styles.sub} style={{ marginTop: 0 }}>
-                Upload HEIC/PNG/JPG, we’ll auto-rotate, resize, convert to JPEG, and upload
-                to Cloudinary using your server-side credentials.
-              </p>
-              <ImageUploader />
-            </div>
-          </div>
+        <section className={styles.adminSections} aria-label="Map admin">
+          <SubmissionsSection />
 
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <p className={styles.cardTitle}>Cloudinary library</p>
+              <p className={styles.cardTitle}>Edit map info</p>
             </div>
             <div className={styles.cardBody}>
-              <CloudinaryLibrary />
+              <p className={styles.sub} style={{ marginTop: 0 }}>
+                UI only for now. This will let you search/select an artwork and edit the fields
+                shown on the map.
+              </p>
+              <MapInfoEditor />
             </div>
           </div>
         </section>
