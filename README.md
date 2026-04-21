@@ -68,6 +68,11 @@ pnpm dev
 
 Visit `http://localhost:3000`.
 
+## Troubleshooting
+
+- **Build error about two pages resolving to the same path**: ensure there is only one route for each path (for example, don’t keep a parallel route group like `/(site)` defining `art/[slug]` alongside `src/app/art/[slug]`).
+- **Build error about `@tailwindcss/postcss` missing**: remove `postcss.config.*` if you’re not using Tailwind, or add the missing dependency if you are.
+
 ## Deploy (Vercel)
 
 - Add a domain like `map.creativewaco.org` in Vercel.

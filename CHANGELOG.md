@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SEO routes for artwork detail pages (`/art/[slug]`) and Webflow-friendly embed routes (`/embed/art/[slug]`).
 - `sitemap.xml` + `robots.txt` generation based on current sheet rows.
 
+### Fixed
+
+- Fix production build failure caused by duplicate route definitions (removed legacy `/(site)` route group).
+- Fix production build failure from stray Tailwind PostCSS config (`postcss.config.mjs`) requiring `@tailwindcss/postcss`.
+
 ### Security
 
 - Restrict iframe embedding on `/embed/*` with `Content-Security-Policy: frame-ancestors` (defaults to Creative Waco domains, extensible via `EMBED_ALLOWED_ORIGINS`).
