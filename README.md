@@ -60,7 +60,26 @@ REVALIDATE_SECONDS="300"
 GEOCODE_MISSING_COORDS="false"
 # NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE="https://cdn.example.com/img/{id}.webp"
 EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
+
+# Optional (scripts only): Cloudinary migration
+# CLOUDINARY_CLOUD_NAME="..."
+# CLOUDINARY_API_KEY="..."
+# CLOUDINARY_API_SECRET="..."
+# CLOUDINARY_FOLDER="public-art-map"
 ```
+
+## Admin + API
+
+- Admin status page: `http://localhost:3000/admin`
+- Health check: `http://localhost:3000/api/health`
+- Artworks JSON: `http://localhost:3000/api/artworks`
+- Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
+
+The artworks endpoint supports:
+
+- `?q=<text>`: case-insensitive substring search across common fields
+- `?category=<Category>`: exact category match (case-insensitive)
+- `?limit=<n>`: cap results (max 10,000)
 
 ## Webflow embed
 
@@ -93,3 +112,27 @@ Visit `http://localhost:3000`.
 
 - Add a domain like `map.creativewaco.org` in Vercel.
 - Set the env vars above in Vercel (Production + Preview if desired).
+
+## Scripts (image migration)
+
+These scripts help migrate externally-hosted images to Cloudinary. They require the Cloudinary env vars in `.env.local` (or your shell) and write CSV output files at the repo root.
+
+### MapHub → Cloudinary
+
+Uploads `image_url` values from `maphub-image-urls.csv` directly (Cloudinary fetches the remote URL).
+
+```bash
+node scripts/migrate-maphub-to-cloudinary.mjs maphub-image-urls.csv
+```
+
+Output: `cloudinary-image-urls.csv`
+
+### Google Drive → Cloudinary (macOS)
+
+Downloads Google Drive `drive.google.com/file/d/...` URLs from your published sheet, then uploads to Cloudinary. Large/HEIC images may be converted via `sips` (macOS).
+
+```bash
+node scripts/migrate-drive-to-cloudinary.mjs
+```
+
+Output: `gdrive-cloudinary-image-urls.csv`

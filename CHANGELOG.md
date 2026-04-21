@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Admin status page (`/admin`) with basic env/data checks and links to API endpoints.
+- JSON API endpoints: `/api/health`, `/api/artworks` (supports `q`, `category`, `limit`), and `/api/artworks/[slug]`.
+- Cloudinary migration helpers:
+  - `scripts/migrate-maphub-to-cloudinary.mjs` (uploads MapHub image URLs; writes `cloudinary-image-urls.csv`)
+  - `scripts/migrate-drive-to-cloudinary.mjs` (downloads Google Drive images; macOS `sips` conversion for HEIC/huge; writes `gdrive-cloudinary-image-urls.csv`)
 - Address-based fallback geocoding (Mapbox) for sheet rows missing `lat`/`lng` (`GEOCODE_MISSING_COORDS=true`).
 - Title-derived slug generation when the sheet `slug` column is blank (with de-duping suffixes).
 - Artwork detail page **Nearby art** section (sorted by distance) with thumbnail tiles; distance is shown inline with the title.
@@ -33,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update one MapHub source URL to the smaller `544_400` variant.
 - Stop treating the sheet `id` column as a slug source (only use `slug`, otherwise derive from `title`).
 - Home list meta line now shows **Collection, Artist, Year** (no category/address).
 - Category color overrides: **Murals** (yellow) and **Other** (blue) stay visually distinct.
