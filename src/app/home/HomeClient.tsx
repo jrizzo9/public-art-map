@@ -7,7 +7,7 @@ import Link from "next/link";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
 import { MapView } from "@/components/MapView";
-import { BrandLogo } from "@/components/BrandLogo";
+import { SiteBrandBar } from "@/components/SiteBrandBar";
 import styles from "./home.module.css";
 
 type Props = {
@@ -430,7 +430,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
       default="none"
     >
       <div className={styles.shell}>
-      <BrandLogo className={styles.brandLogo} imgClassName={styles.brandLogoImg} />
+      <SiteBrandBar titleAs="h1" />
 
       <section className={styles.map}>
         <MapView
@@ -444,13 +444,6 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
       </section>
 
       <aside className={styles.panel} aria-label="Artwork list">
-        <header className={styles.header}>
-          <div className={styles.headerTop}>
-            <div>
-              <h1 className={styles.h1}>Waco Public Art Map</h1>
-            </div>
-          </div>
-
           <details className={styles.filterDetails}>
             <summary className={styles.filterSummary} id="filters-summary">
               <span className={styles.filterChevron} aria-hidden />
@@ -630,7 +623,6 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
             )}
             </div>
           </details>
-        </header>
 
         <div className={styles.panelBody}>
           <ul className={styles.ul}>

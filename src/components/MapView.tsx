@@ -54,6 +54,37 @@ function selectionFlyPadding(map: mapboxgl.Map) {
   return mapChromePadding(map);
 }
 
+/** Mapbox draws a tip below `.mapboxgl-popup-content`; off-DOM probe omits it — add slack so offset matches real popup height. */
+const MAPBOX_POPUP_TAIL_BELOW_CARD_ESTIMATE_PX = 18;
+
+/**
+ * Approximate full popup stack height before `Popup` mounts (wrap + themed content shell + tip slack).
+ */
+function measureArtworkPopupOuterHeightPx(
+  wrap: HTMLElement,
+  maxWidthCss: string,
+): number {
+  const outer = document.createElement("div");
+  outer.style.cssText =
+    "position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;contain:layout;";
+  outer.style.maxWidth = maxWidthCss;
+
+  const content = document.createElement("div");
+  content.className = "mapboxgl-popup-content";
+  content.appendChild(wrap);
+
+  outer.appendChild(content);
+  document.body.appendChild(outer);
+
+  const measured = outer.offsetHeight;
+
+  content.removeChild(wrap);
+  outer.remove();
+
+  const h = measured + MAPBOX_POPUP_TAIL_BELOW_CARD_ESTIMATE_PX;
+  return Number.isFinite(h) && h > 80 ? h : 280;
+}
+
 type Props = {
   artworks: Artwork[];
   selectedSlug?: string;
@@ -228,16 +259,7 @@ export function MapView({
     const art = artworks.find((a) => a.slug === selectedSlug);
     if (!art) return;
 
-    // Place the artwork in the clear map area (right of the floating panel), biased toward the upper-right.
-    map.flyTo({
-      center: [art.lng, art.lat],
-      zoom: Math.max(map.getZoom(), 14),
-      padding: selectionFlyPadding(map),
-      retainPadding: false,
-      essential: true,
-      duration: 900,
-      curve: 1.5,
-    });
+    const lngLat: [number, number] = [art.lng, art.lat];
 
     const wrap = document.createElement("div");
     wrap.className = popupStyles.popupRoot;
@@ -336,6 +358,21 @@ export function MapView({
     wrap.appendChild(links);
 
     const narrow = map.getContainer().getBoundingClientRect().width < 640;
+    const popupMaxWidth = narrow ? "min(280px, calc(100vw - 48px))" : "280px";
+    const popupOuterH = measureArtworkPopupOuterHeightPx(wrap, popupMaxWidth);
+
+    // Single flight: Mapbox places `center` at (padded focal point + offset). Positive offset.y moves the
+    // anchor down — half the popup height vertically centers the card vs. centering only the dot.
+    map.flyTo({
+      center: lngLat,
+      zoom: Math.max(map.getZoom(), 14),
+      padding: selectionFlyPadding(map),
+      retainPadding: false,
+      essential: true,
+      duration: 900,
+      curve: 1.5,
+      offset: [0, popupOuterH / 2],
+    });
 
     // Anchor bottom = bottom edge (and tip) sits at lnglat so the card is above the dot.
     // Negative Y offset moves the popup up (Mapbox: negative is up); positive was pushing the tip through the marker on mobile.
@@ -345,10 +382,10 @@ export function MapView({
       anchor: "bottom",
       closeButton: false,
       closeOnClick: false,
-      maxWidth: narrow ? "min(280px, calc(100vw - 48px))" : "280px",
+      maxWidth: popupMaxWidth,
       offset: [0, popupOffsetY] as [number, number],
     })
-      .setLngLat([art.lng, art.lat])
+      .setLngLat(lngLat)
       .setDOMContent(wrap)
       .addTo(map);
 

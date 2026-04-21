@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { env } from "@/lib/env";
-import { getArtworkBySlug } from "@/lib/sheet";
 import { ArtworkDetail } from "@/components/ArtworkDetail";
+import { env } from "@/lib/env";
+import { SITE_PRODUCT_NAME } from "@/lib/site";
+import { getArtworkBySlug } from "@/lib/sheet";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -30,6 +32,14 @@ export default async function EmbedArtPage({ params }: Props) {
 
   return (
     <main className="p-3 md:p-4">
+      <header className="mb-4 border-b border-border pb-3">
+        <Link
+          href="/"
+          className="text-sm font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
+        >
+          {SITE_PRODUCT_NAME}
+        </Link>
+      </header>
       <ArtworkDetail artwork={artwork} variant="embed" />
     </main>
   );

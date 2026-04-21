@@ -94,36 +94,6 @@
   pointer-events: none;
 }
 
-.brandLogo {
-  position: fixed;
-  top: max(12px, env(safe-area-inset-top, 0px));
-  left: max(12px, env(safe-area-inset-left, 0px));
-  z-index: 3;
-  display: block;
-  line-height: 0;
-  border-radius: var(--radius-md);
-  transition: opacity 0.15s ease;
-}
-
-.brandLogo:hover {
-  opacity: 0.88;
-}
-
-.brandLogo:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px color-mix(in oklch, var(--background) 98%, transparent),
-    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
-}
-
-.brandLogoImg {
-  height: 40px;
-  width: auto;
-  max-width: min(220px, calc(100vw - 48px));
-  display: block;
-  object-fit: contain;
-}
-
 .panel {
   --panel-fg: var(--foreground);
   --panel-muted: var(--muted-foreground);
@@ -167,15 +137,6 @@
   padding: 10px 10px 6px 10px;
   border-bottom: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
   flex-shrink: 0;
-}
-
-.productTitle {
-  margin: 0;
-  font-size: var(--panel-title);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  color: color-mix(in oklch, var(--foreground) 92%, transparent);
 }
 
 .backLink {

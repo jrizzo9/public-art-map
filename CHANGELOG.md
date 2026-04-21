@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`SiteBrandBar`** (`src/components/SiteBrandBar.tsx`) and **`src/lib/site.ts`** (`SITE_PRODUCT_NAME`, default metadata title template) so **Public Art Map** + Creative Waco logo stay consistent on **home**, **`/art/[slug]`**, **404**, and the **embed** artwork header link.
 - **View Transitions** (Next `experimental.viewTransition`) for **map home ↔ `/art/[slug]`** navigations, with **nav-forward** / **nav-back** CSS, shared **logo** `view-transition-name` anchor, and **Details** (list + map popup) / **← Map** / 404 back using `transitionTypes` on `Link` or `router.push`.
 - **Art detail shell** (`art-detail-shell.module.css`): same **Creative Waco** wordmark; **centered** frosted **panel**; **page-level scroll** for long copy; **Mapbox Static Images** snapshot of the artwork’s **lat/lng** (same `NEXT_PUBLIC_MAPBOX_TOKEN` + `NEXT_PUBLIC_MAPBOX_STYLE_URL` as the map) with a **dark** top-to-bottom **overlay**; **gradient fallback** when the API is not used.
 - **`mapbox-static.ts`**: build **Static Images** preview URLs (zoomed block context) for the detail backdrop.
@@ -28,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Branding copy:** visible product title is **Public Art Map** (replacing **Waco** in that label); browser titles use **`SITE_METADATA_DEFAULT_TITLE`** / **`SITE_METADATA_TITLE_TEMPLATE`** from `site.ts`.
+- **Artwork detail (`/art/[slug]`):** same fixed **logo + title** chrome as the map home (via **`SiteBrandBar`**); removed the duplicate product label from the panel **← Map** row.
+- **Home filters:** **Filters** `<details>` sits flush inside the panel (drop legacy negative horizontal margins); summary row is a compact bordered control with optional **active count** badge on the **right**; inner filter grid padding aligned with the panel.
+- **Embed (`/embed/art/[slug]`):** header link to **`/`** labeled with **`SITE_PRODUCT_NAME`**.
 - **Artwork detail page** layout and copy: removed **PUBLIC ART** kicker, visible **Placement** section title, **latitude/longitude** grid, and the **detail-page** external **More information** link (`externalUrl` still powers **Website →** on the **map popup** when set).
 - **Facet selection pruning:** compute **effective** category/commission/collection sets with **`deriveFacetUi`** during render instead of **`useEffect`** + `setState` (avoids cascading-render lint while keeping impossible chip selections pruned).
 - **Mapbox selection popup** (artwork preview on the map): **rounded corners**, **card** background, and **border / shadow** from the design system (overrides Mapbox’s default flat box).
@@ -47,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and apply a **vertical `offset`** so the marker and popup card sit better inside the padded map chrome after selection.
 - Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
 - Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
 - Selection **flies straight** to the artwork (no intermediate refit-to-all-markers) and marker clicks stay selected (map background click no longer clears selection in the same gesture).

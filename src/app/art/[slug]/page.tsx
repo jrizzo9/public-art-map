@@ -6,7 +6,7 @@ import { env } from "@/lib/env";
 import { mapboxStaticSnapshotUrl } from "@/lib/mapbox-static";
 import { getArtworkBySlug } from "@/lib/sheet";
 import { ArtworkDetail } from "@/components/ArtworkDetail";
-import { BrandLogo } from "@/components/BrandLogo";
+import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "../art-detail-shell.module.css";
 
 type Props = {
@@ -65,10 +65,7 @@ export default async function ArtPage({ params }: Props) {
         }
       />
 
-      <BrandLogo
-        className={shellStyles.brandLogo}
-        imgClassName={shellStyles.brandLogoImg}
-      />
+      <SiteBrandBar titleAs="p" />
 
       <main className={shellStyles.panel}>
         <header className={shellStyles.backRow}>
@@ -79,7 +76,6 @@ export default async function ArtPage({ params }: Props) {
           >
             ← Map
           </Link>
-          <p className={shellStyles.productTitle}>Waco Public Art Map</p>
         </header>
 
         <ViewTransition

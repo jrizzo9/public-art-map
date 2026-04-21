@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import {
+  SITE_METADATA_DEFAULT_TITLE,
+  SITE_METADATA_TITLE_TEMPLATE,
+} from "@/lib/site";
 import "./globals.css";
 
 const fontSans = Inter({
@@ -22,8 +26,8 @@ const fontSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: {
-    default: "Creative Waco Public Art Map",
-    template: "%s · Creative Waco Public Art Map",
+    default: SITE_METADATA_DEFAULT_TITLE,
+    template: SITE_METADATA_TITLE_TEMPLATE,
   },
   description: "Explore public art in Waco with location-based detail pages.",
 };
