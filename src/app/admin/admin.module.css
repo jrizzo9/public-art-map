@@ -19,6 +19,37 @@
   margin: 0 auto;
 }
 
+.adminToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.adminToolbarTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: color-mix(in oklch, var(--muted-foreground) 92%, transparent);
+}
+
+.signOutBtn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.signOutBtn:hover {
+  border-color: color-mix(in oklch, var(--border) 92%, transparent);
+  background: color-mix(in oklch, var(--muted) 36%, transparent);
+}
+
 .header {
   display: flex;
   align-items: flex-start;

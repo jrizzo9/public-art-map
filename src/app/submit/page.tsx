@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "@/app/art/art-detail-shell.module.css";
+import { env } from "@/lib/env";
 import { SubmitArtPanel } from "./SubmitArtPanel";
 
 export const metadata: Metadata = {
@@ -12,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default function SubmitPage() {
+  if (!env.submitPublicArtEnabled()) {
+    redirect("/");
+  }
+
   return (
     <div className={shellStyles.shell}>
       <div

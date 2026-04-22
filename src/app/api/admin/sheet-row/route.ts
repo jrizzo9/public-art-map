@@ -48,9 +48,9 @@ export async function POST(request: Request) {
     Boolean(env.SHEET_ID().trim()) &&
     Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON().trim());
 
-  if (!appsScript && !directSheets) {
+  if (!directSheets && !appsScript) {
     return jsonError(
-      "Sheet updates not configured: set SHEET_EDIT_API_URL + SHEET_EDIT_API_TOKEN, or SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON.",
+      "Sheet updates not configured: set SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON (recommended), or SHEET_EDIT_API_URL + SHEET_EDIT_API_TOKEN.",
       503,
     );
   }
@@ -75,45 +75,46 @@ export async function POST(request: Request) {
   const slug = parsed.data.slug;
 
   try {
-    if (appsScript) {
-      const { status, body: upstream } = await forwardSheetEditToAppsScript(
-        slug,
-        patch,
-      );
-      if (status >= 400) {
-        const msg =
-          typeof upstream === "object" &&
-          upstream !== null &&
-          "error" in upstream &&
-          typeof (upstream as { error?: unknown }).error === "string"
-            ? (upstream as { error: string }).error
-            : `Apps Script returned HTTP ${status}.`;
-        return jsonError(msg, status >= 500 ? 502 : status);
-      }
-
-      const up = upstream as { ok?: boolean; error?: string };
-      if (typeof up === "object" && up !== null && up.ok === false) {
-        return jsonError(up.error ?? "Apps Script rejected the update.", 400);
-      }
+    // Prefer Sheets API when configured (same path as submissions); Apps Script used if API env is incomplete.
+    if (directSheets) {
+      const result = await updateArtworkRowBySlug(slug, patch);
       revalidatePath("/");
       revalidatePath("/art");
       return Response.json({
         ok: true as const,
         slug,
-        via: "apps_script" as const,
-        upstream,
+        via: "google_sheets_api" as const,
+        rowNumber: result.rowNumber,
+        updatedFields: result.updatedFields,
       });
     }
 
-    const result = await updateArtworkRowBySlug(slug, patch);
+    const { status, body: upstream } = await forwardSheetEditToAppsScript(
+      slug,
+      patch,
+    );
+    if (status >= 400) {
+      const msg =
+        typeof upstream === "object" &&
+        upstream !== null &&
+        "error" in upstream &&
+        typeof (upstream as { error?: unknown }).error === "string"
+          ? (upstream as { error: string }).error
+          : `Apps Script returned HTTP ${status}.`;
+      return jsonError(msg, status >= 500 ? 502 : status);
+    }
+
+    const up = upstream as { ok?: boolean; error?: string };
+    if (typeof up === "object" && up !== null && up.ok === false) {
+      return jsonError(up.error ?? "Apps Script rejected the update.", 400);
+    }
     revalidatePath("/");
     revalidatePath("/art");
     return Response.json({
       ok: true as const,
       slug,
-      via: "google_sheets_api" as const,
-      rowNumber: result.rowNumber,
-      updatedFields: result.updatedFields,
+      via: "apps_script" as const,
+      upstream,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed.";

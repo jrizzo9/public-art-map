@@ -529,6 +529,19 @@
     var(--shadow-xl);
 }
 
+.floatingSubmitBtnDisabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.floatingSubmitBtnDisabled:hover {
+  transform: none;
+  border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+  background: color-mix(in oklch, var(--primary) 18%, var(--card));
+}
+
 @media (max-width: 640px) {
   .floatingSubmitBtn {
     left: 12px;

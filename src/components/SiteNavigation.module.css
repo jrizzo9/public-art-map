@@ -1,0 +1,50 @@
+.nav {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  max-width: min(380px, calc(100vw - 24px));
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+  background: color-mix(in oklch, var(--card) 78%, transparent);
+  color: color-mix(in oklch, var(--foreground) 94%, transparent);
+  backdrop-filter: blur(10px);
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.link:hover {
+  border-color: color-mix(in oklch, var(--border) 92%, transparent);
+  background: color-mix(in oklch, var(--muted) 42%, transparent);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 96%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 52%, transparent);
+}
+
+.linkActive {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--primary) 14%, var(--card));
+  color: var(--foreground);
+}

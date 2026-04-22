@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { HomeClient } from "./home/HomeClient";
+import { parseHomeFiltersFromPageSearchParams } from "./home/home-filter-url";
 import { env } from "@/lib/env";
 import { getArtworks } from "@/lib/sheet";
 import styles from "./home/home.module.css";
@@ -10,16 +12,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const mapboxStyleUrl = env.NEXT_PUBLIC_MAPBOX_STYLE_URL();
-  return <HomeServer mapboxStyleUrl={mapboxStyleUrl} />;
+  const sp = await searchParams;
+  const initialFiltersFromUrl = parseHomeFiltersFromPageSearchParams(sp);
+  return (
+    <HomeServer
+      mapboxStyleUrl={mapboxStyleUrl}
+      initialFiltersFromUrl={initialFiltersFromUrl}
+    />
+  );
 }
 
-async function HomeServer({ mapboxStyleUrl }: { mapboxStyleUrl: string }) {
+async function HomeServer({
+  mapboxStyleUrl,
+  initialFiltersFromUrl,
+}: {
+  mapboxStyleUrl: string;
+  initialFiltersFromUrl: ReturnType<typeof parseHomeFiltersFromPageSearchParams>;
+}) {
   const artworks = await getArtworks();
+  const submitEnabled = env.submitPublicArtEnabled();
   return (
     <>
-      <HomeClient artworks={artworks} mapboxStyleUrl={mapboxStyleUrl} />
+      <Suspense fallback={null}>
+        <HomeClient
+          artworks={artworks}
+          mapboxStyleUrl={mapboxStyleUrl}
+          submitEnabled={submitEnabled}
+          initialFiltersFromUrl={initialFiltersFromUrl}
+        />
+      </Suspense>
       <section className={styles.srOnly} aria-label="Artwork index">
         <h2>Public art in Waco</h2>
         <p>

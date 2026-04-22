@@ -4,15 +4,25 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
 import { MapView } from "@/components/MapView";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
+import {
+  type HomeFiltersFromUrl,
+  homeFiltersFromUrlEqual,
+  parseHomeFiltersFromUrlSearchParams,
+  serializeHomeFiltersToQueryString,
+} from "./home-filter-url";
 import styles from "./home.module.css";
 
 type Props = {
   artworks: Artwork[];
   mapboxStyleUrl?: string;
+  submitEnabled: boolean;
+  /** Parsed from `searchParams` on the server — matches first client paint when using filters in the URL. */
+  initialFiltersFromUrl: HomeFiltersFromUrl;
 };
 
 type FacetOption = { key: string; label: string };
@@ -270,17 +280,59 @@ function deriveFacetUi(
   };
 }
 
-export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
+function filtersFromEffectiveAndYear(
+  effectiveCategories: Set<string>,
+  effectiveCommissions: Set<string>,
+  effectiveCollections: Set<string>,
+  yearMin: string,
+  yearMax: string,
+): HomeFiltersFromUrl {
+  return {
+    categories: [...effectiveCategories].sort(),
+    commissions: [...effectiveCommissions].sort(),
+    collections: [...effectiveCollections].sort(),
+    yearMin: yearMin.trim(),
+    yearMax: yearMax.trim(),
+  };
+}
+
+export function HomeClient({
+  artworks,
+  mapboxStyleUrl,
+  submitEnabled,
+  initialFiltersFromUrl,
+}: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  /** Empty = do not filter by this facet; non-empty = only matching artworks */
-  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(() => new Set());
-  const [selectedCommissions, setSelectedCommissions] = useState<Set<string>>(() => new Set());
-  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(() => new Set());
-  const [yearMin, setYearMin] = useState("");
-  const [yearMax, setYearMax] = useState("");
+  /** Facet chips follow the query string so Back/Forward and shared URLs stay in sync. */
+  const searchKey = searchParams.toString();
+  const urlFilters = useMemo(
+    () => parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey)),
+    [searchKey],
+  );
+
+  const selectedCategories = useMemo(
+    () => new Set(urlFilters.categories),
+    [urlFilters],
+  );
+  const selectedCommissions = useMemo(
+    () => new Set(urlFilters.commissions),
+    [urlFilters],
+  );
+  const selectedCollections = useMemo(
+    () => new Set(urlFilters.collections),
+    [urlFilters],
+  );
+
+  /** Year inputs stay editable while typing; URL updates are debounced separately. */
+  const [yearMin, setYearMin] = useState(initialFiltersFromUrl.yearMin);
+  const [yearMax, setYearMax] = useState(initialFiltersFromUrl.yearMax);
 
   const yearParsed = useMemo(
     () => parseYearInputs(yearMin, yearMax),
@@ -352,40 +404,158 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
     yearParsed,
   ]);
 
-  const toggleCategory = useCallback((key: string) => {
-    setSelectedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  /** When the query string changes from history navigation, align year fields with `ymin` / `ymax`. */
+  /* eslint-disable react-hooks/set-state-in-effect -- year inputs are local for typing; history navigation must rest them from the URL. */
+  useEffect(() => {
+    setYearMin(urlFilters.yearMin);
+    setYearMax(urlFilters.yearMax);
+  }, [searchKey, urlFilters.yearMin, urlFilters.yearMax]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const toggleCommission = useCallback((key: string) => {
-    setSelectedCommissions((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
+  const pushFilterUrl = useCallback(() => {
+    const desired = filtersFromEffectiveAndYear(
+      effectiveCategories,
+      effectiveCommissions,
+      effectiveCollections,
+      yearMin,
+      yearMax,
+    );
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    if (homeFiltersFromUrlEqual(desired, parsed)) return;
+    const qs = serializeHomeFiltersToQueryString(desired);
+    const next = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [
+    effectiveCategories,
+    effectiveCommissions,
+    effectiveCollections,
+    yearMin,
+    yearMax,
+    pathname,
+    router,
+    searchParams,
+  ]);
 
-  const toggleCollection = useCallback((key: string) => {
-    setSelectedCollections((prev) => {
-      const next = new Set(prev);
+  /** Rewrite URL when facet pruning removes impossible chip keys (and after loading an outdated share link). */
+  useEffect(() => {
+    pushFilterUrl();
+  }, [
+    effectiveCategories,
+    effectiveCommissions,
+    effectiveCollections,
+    pushFilterUrl,
+  ]);
+
+  /** Debounce year typing so we don’t rewrite the URL on every keystroke. */
+  useEffect(() => {
+    const id = window.setTimeout(() => pushFilterUrl(), 400);
+    return () => clearTimeout(id);
+  }, [yearMin, yearMax, pushFilterUrl]);
+
+  const replaceQueryWith = useCallback(
+    (nextFilters: HomeFiltersFromUrl) => {
+      const qs = serializeHomeFiltersToQueryString(nextFilters);
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      router.replace(href, { scroll: false });
+    },
+    [pathname, router],
+  );
+
+  const toggleCategory = useCallback(
+    (key: string) => {
+      const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+      const next = new Set(parsed.categories);
       if (next.has(key)) next.delete(key);
       else next.add(key);
-      return next;
-    });
-  }, []);
+      replaceQueryWith({
+        categories: [...next].sort(),
+        commissions: parsed.commissions,
+        collections: parsed.collections,
+        yearMin: yearMin.trim(),
+        yearMax: yearMax.trim(),
+      });
+    },
+    [replaceQueryWith, searchParams, yearMin, yearMax],
+  );
+
+  const toggleCommission = useCallback(
+    (key: string) => {
+      const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+      const next = new Set(parsed.commissions);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      replaceQueryWith({
+        categories: parsed.categories,
+        commissions: [...next].sort(),
+        collections: parsed.collections,
+        yearMin: yearMin.trim(),
+        yearMax: yearMax.trim(),
+      });
+    },
+    [replaceQueryWith, searchParams, yearMin, yearMax],
+  );
+
+  const toggleCollection = useCallback(
+    (key: string) => {
+      const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+      const next = new Set(parsed.collections);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      replaceQueryWith({
+        categories: parsed.categories,
+        commissions: parsed.commissions,
+        collections: [...next].sort(),
+        yearMin: yearMin.trim(),
+        yearMax: yearMax.trim(),
+      });
+    },
+    [replaceQueryWith, searchParams, yearMin, yearMax],
+  );
 
   const clearFilters = useCallback(() => {
-    setSelectedCategories(new Set());
-    setSelectedCommissions(new Set());
-    setSelectedCollections(new Set());
     setYearMin("");
     setYearMax("");
-  }, []);
+    replaceQueryWith({
+      categories: [],
+      commissions: [],
+      collections: [],
+      yearMin: "",
+      yearMax: "",
+    });
+  }, [replaceQueryWith]);
+
+  const clearCategoryFacet = useCallback(() => {
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    replaceQueryWith({
+      categories: [],
+      commissions: parsed.commissions,
+      collections: parsed.collections,
+      yearMin: yearMin.trim(),
+      yearMax: yearMax.trim(),
+    });
+  }, [replaceQueryWith, searchParams, yearMin, yearMax]);
+
+  const clearCommissionFacet = useCallback(() => {
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    replaceQueryWith({
+      categories: parsed.categories,
+      commissions: [],
+      collections: parsed.collections,
+      yearMin: yearMin.trim(),
+      yearMax: yearMax.trim(),
+    });
+  }, [replaceQueryWith, searchParams, yearMin, yearMax]);
+
+  const clearCollectionFacet = useCallback(() => {
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    replaceQueryWith({
+      categories: parsed.categories,
+      commissions: parsed.commissions,
+      collections: [],
+      yearMin: yearMin.trim(),
+      yearMax: yearMax.trim(),
+    });
+  }, [replaceQueryWith, searchParams, yearMin, yearMax]);
 
   const activeFilterCount =
     effectiveCategories.size +
@@ -478,7 +648,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                   type="button"
                   className={styles.filterLink}
                   disabled={effectiveCategories.size === 0}
-                  onClick={() => setSelectedCategories(new Set())}
+                  onClick={clearCategoryFacet}
                 >
                   Any
                 </button>
@@ -521,7 +691,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                   type="button"
                   className={styles.filterLink}
                   disabled={effectiveCommissions.size === 0}
-                  onClick={() => setSelectedCommissions(new Set())}
+                  onClick={clearCommissionFacet}
                 >
                   Any
                 </button>
@@ -554,7 +724,7 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
                   type="button"
                   className={styles.filterLink}
                   disabled={effectiveCollections.size === 0}
-                  onClick={() => setSelectedCollections(new Set())}
+                  onClick={clearCollectionFacet}
                 >
                   Any
                 </button>
@@ -683,14 +853,24 @@ export function HomeClient({ artworks, mapboxStyleUrl }: Props) {
         </div>
       </aside>
 
-      <Link
-        href="/submit"
-        className={styles.floatingSubmitBtn}
-        prefetch
-        transitionTypes={["nav-forward"]}
-      >
-        Submit Public Art
-      </Link>
+      {submitEnabled ? (
+        <Link
+          href="/submit"
+          className={styles.floatingSubmitBtn}
+          prefetch
+          transitionTypes={["nav-forward"]}
+        >
+          Submit Public Art
+        </Link>
+      ) : (
+        <span
+          className={`${styles.floatingSubmitBtn} ${styles.floatingSubmitBtnDisabled}`}
+          aria-disabled="true"
+          title="Submissions are paused"
+        >
+          Submit Public Art
+        </span>
+      )}
     </div>
     </ViewTransition>
   );

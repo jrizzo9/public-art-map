@@ -16,7 +16,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 - **Artwork detail (`/art/[slug]`):** a **frosted, centered** card; the page **scrolls** when content is long. When `NEXT_PUBLIC_MAPBOX_TOKEN` and valid coordinates are set, a **Mapbox Static** map image of the **artwork’s location** is used as the full-page background, with a **dark** scrim; otherwise a **gradient** fallback. **View Transitions** animate between the map and the detail page (see `next.config.ts` and `src/app/globals.css`).
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map on the **left** (vertically centered, compact).
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~30% of the viewport) for the panel (collapsible **Filters** + artwork list); selecting an artwork uses a smooth **fly-to** that accounts for the popup’s height (via `flyTo` `offset`) so the **popup card** lands vertically centered in the clear map area (with the marker below it for context).
-- **Filters:** **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range—expand **Filters** to refine the map and list. Nothing selected on a facet means **no filtering** on that facet; selecting one or more chips narrows to artworks matching **any** of those selections (within that facet). Chips available in each facet reflect the current **other** facets and **year** range so impossible combinations stay hidden; changing filters may drop selections that no longer apply. Each facet has **Any** to clear only that facet. **Clear** resets category, commission, collection, and year. The **title and Filters stay fixed**; only the **artwork list** (and **Showing X of Y** under it) scrolls. Changing filters **refits the map** to the visible markers with a short debounce when values change quickly.
+- **Filters:** **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range—expand **Filters** to refine the map and list. Nothing selected on a facet means **no filtering** on that facet; selecting one or more chips narrows to artworks matching **any** of those selections (within that facet). Chips available in each facet reflect the current **other** facets and **year** range so impossible combinations stay hidden; changing filters may drop selections that no longer apply. Each facet has **Any** to clear only that facet. **Clear** resets category, commission, collection, and year. **Active filters are reflected in the URL** (query keys `cat`, `comm`, `coll`, `ymin`, `ymax`) for sharing and browser history. The **title and Filters stay fixed**; only the **artwork list** (and **Showing X of Y** under it) scrolls. Changing filters **refits the map** to the visible markers with a short debounce when values change quickly.
 - Choosing an artwork from the list row (main hit target) or from a map marker **flies the map** to that point (smooth camera) and opens a **popup above the marker** (tip points at the marker) with title, **artist/year** (when available), an image preview that shows the **full photo** (no crop), and a link to **Details →**; each row also has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the popup. Artwork detail pages also include a **Nearby art** section (sorted by distance) to jump to nearby works; thumbnails show the **full photo** (no crop).
 - Click empty map area to clear the popup selection.
 
@@ -74,6 +74,12 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # Optional: SHEET_SUBMISSIONS_RANGE='Submissions'!A:Z
 
 # Optional: sheet row patches (POST /api/admin/sheet-row) — see .env.example (no request secret; protect the deployment if the URL is public).
+
+# Admin UI: password login; required to use /admin and /api/admin/* (except /api/admin/auth).
+# ADMIN_PASSWORD="your-secret"
+
+# Set to true to enable the floating Submit button, /submit, and sitemap /submit when appropriate.
+# NEXT_PUBLIC_SUBMIT_ENABLED=true
 ```
 
 Notes:
@@ -82,12 +88,14 @@ Notes:
 
 ## Admin + API
 
+- **Admin** routes require **`ADMIN_PASSWORD`**: sign in at `/admin/login` (HTTP-only session cookie). **Middleware** blocks `/admin` and `/api/admin/*` without a valid session (**`/api/admin/auth`** is public for login/logout). The admin layout includes a small top **nav** (Map, Art, optional Submit, Admin).
 - Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Edit map info** (collapsible artwork picker, field editor, optional **Replace image** upload via `POST /api/admin/cloudinary`; saves through `POST /api/admin/sheet-row` when sheet updates are configured).
-- Submit flow: `http://localhost:3000/submit` — `POST /api/submissions/prepare` returns signed Cloudinary upload slots; `POST /api/submissions/finalize` verifies uploads and **appends a row** to the **Submissions** sheet (requires `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and a header row—see `scripts/submissions-sheet-header-row.csv`). Photos live in Cloudinary only; submission text and image URLs are stored in the sheet.
+- **`POST /api/admin/sheet-row`** uses the **Google Sheets API** when `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON` are set (same pattern as submissions); **Apps Script** is only used if that pair is missing and the Apps Script URL + token are set.
+- Submit flow (when **`NEXT_PUBLIC_SUBMIT_ENABLED=true`**): `http://localhost:3000/submit` — `POST /api/submissions/prepare` returns signed Cloudinary upload slots; `POST /api/submissions/finalize` verifies uploads and **appends a row** to the **Submissions** sheet (requires `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and a header row—see `scripts/submissions-sheet-header-row.csv`). Photos live in Cloudinary only; submission text and image URLs are stored in the sheet. When the flag is off, `/submit` redirects to `/`.
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
-- Optional sheet updates: `POST /api/admin/sheet-row` (no request auth; configure Apps Script URL + token **or** Google Sheets API per `.env.example` — protect the route at the host if the app is public).
+- Optional sheet updates: `POST /api/admin/sheet-row` (no request secret—use **`ADMIN_PASSWORD`** + middleware for admin callers; configure Google Sheets API **or** Apps Script fallback per `.env.example`).
 
 ### Cloudinary server routes (scripts + integrations)
 
@@ -184,3 +192,11 @@ pnpm download:drive-photos
 pnpm images:web-ready
 pnpm cloudinary:upload-web-ready
 ```
+
+### Sheet env smoke test
+
+```bash
+pnpm test:sheet
+```
+
+Loads `.env.local` when present and checks published CSV access, optional Apps Script reachability, and read-only Sheets API access when service-account env is set.

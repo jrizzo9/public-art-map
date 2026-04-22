@@ -6,6 +6,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = env.NEXT_PUBLIC_SITE_URL();
   const artworks = await getArtworks();
   const now = new Date();
+  const submitEnabled = env.submitPublicArtEnabled();
 
   return [
     {
@@ -20,12 +21,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.9,
     },
-    {
-      url: new URL("/submit", baseUrl).toString(),
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    },
+    ...(submitEnabled
+      ? [
+          {
+            url: new URL("/submit", baseUrl).toString(),
+            lastModified: now,
+            changeFrequency: "monthly" as const,
+            priority: 0.6,
+          },
+        ]
+      : []),
     ...artworks.map((a) => ({
       url: new URL(`/art/${a.slug}`, baseUrl).toString(),
       lastModified: now,

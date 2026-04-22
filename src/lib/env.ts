@@ -66,9 +66,15 @@ export const env = {
   /** Full JSON for a Google Cloud service account that has Editor access to the sheet. */
   GOOGLE_SERVICE_ACCOUNT_JSON: () =>
     optional("GOOGLE_SERVICE_ACCOUNT_JSON") ?? "",
-  /** Google Apps Script Web App URL for sheet row updates (preferred when set). */
+  /** Apps Script URL for sheet row updates (used when SHEET_ID / GOOGLE_SERVICE_ACCOUNT_JSON incomplete). */
   SHEET_EDIT_API_URL: () => optional("SHEET_EDIT_API_URL") ?? "",
   /** Token your Apps Script validates (sent only server-side in the POST body). */
   SHEET_EDIT_API_TOKEN: () => optional("SHEET_EDIT_API_TOKEN") ?? "",
+
+  /** Plain password for `/admin` UI + `/api/admin/*`. Set in production (e.g. Vercel). */
+  ADMIN_PASSWORD: () => optional("ADMIN_PASSWORD") ?? "",
+  /** When `'true'`, shows the home submit control and `/submit`. Otherwise disabled. */
+  submitPublicArtEnabled: () =>
+    optional("NEXT_PUBLIC_SUBMIT_ENABLED") === "true",
 };
 

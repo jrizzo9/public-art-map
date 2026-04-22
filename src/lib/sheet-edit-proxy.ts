@@ -3,7 +3,8 @@ import type { SheetPatch } from "@/lib/google-sheets-write";
 
 /**
  * Forwards an update to a Google Apps Script Web App (doPost).
- * Contract (recommended for your script):
+ * Used when Sheets API env is incomplete; otherwise admin uses `updateArtworkRowBySlug`.
+ * Contract:
  * - POST JSON body: `{ slug, patch, token }` where `token` must match `SHEET_EDIT_API_TOKEN`
  *   (the server injects `token`; callers to Next never send it.)
  * - Script returns JSON like `{ ok: true }` or `{ ok: false, error: "..." }`.

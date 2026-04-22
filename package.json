@@ -11,13 +11,15 @@
     "images:web-ready": "node scripts/make-web-ready-images.mjs",
     "cloudinary:upload-and-update-sheet": "node scripts/upload-web-ready-to-cloudinary-and-update-sheet.mjs",
     "cloudinary:upload-web-ready": "node scripts/upload-web-ready-to-cloudinary.mjs",
-    "cloudinary:order-csv-like-public-sheet": "node scripts/reorder-cloudinary-csv-like-public-sheet.mjs"
+    "cloudinary:order-csv-like-public-sheet": "node scripts/reorder-cloudinary-csv-like-public-sheet.mjs",
+    "test:sheet": "node scripts/test-sheet-connection.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "googleapis": "^156.0.0",
+    "jose": "^6.2.2",
     "lucide-react": "^1.8.0",
     "mapbox-gl": "^3.22.0",
     "next": "16.2.4",

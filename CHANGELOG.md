@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Map home **filter query parameters** (`cat`, `comm`, `coll`, `ymin`, `ymax`) so filter state is **shareable** and works with **browser history**; the home page reads `searchParams` on the server for a matching first paint.
+- **Admin** password sign-in (`ADMIN_PASSWORD`) with an **HTTP-only session cookie** (JWT via **`jose`**), **`POST /api/admin/auth`**, **`/admin/login`**, **middleware** protecting **`/admin`** and **`/api/admin/*`** (except the auth route), **Sign out** on the admin page, and an admin **toolbar**.
+- **Admin** layout **site navigation** (Map, Art, optional Submit, Admin) for quick moves between sections.
+- **`NEXT_PUBLIC_SUBMIT_ENABLED`**: when set to `true`, enables the home **Submit** control, **`/submit`**, and includes **`/submit`** in **`sitemap.xml`**; when off, **`/submit`** redirects to **`/`**.
+- pnpm script **`test:sheet`** running **`scripts/test-sheet-connection.mjs`** to smoke-test sheet / Apps Script configuration (read-only checks when possible).
 - Google Sheet **Submissions** tab: append submission rows on finalize (`src/lib/google-sheets-submissions.ts`), optional `SHEET_SUBMISSIONS_RANGE`, and `scripts/submissions-sheet-header-row.csv` for the header row template.
 - Admin **Public submissions** reads completed submissions from that sheet tab (Google Sheets API) instead of Cloudinary metadata files.
 - Artwork directory page at `/art` with search, category filtering, and sorting.
@@ -52,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`POST /api/admin/sheet-row`** prefers **direct Google Sheets API** updates when **`SHEET_ID`** + **`GOOGLE_SERVICE_ACCOUNT_JSON`** are configured; **Apps Script** (`SHEET_EDIT_API_URL` + token) is used **only** when that service-account path is incomplete.
+- **`.env.example`**: documents **admin password** auth, **`NEXT_PUBLIC_SUBMIT_ENABLED`**, and **Sheets API–first** sheet edits (Apps Script as fallback).
 - Public submission **finalize** persists metadata to the **Submissions** Google Sheet (requires `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON`); Cloudinary stores **photos only** (no `submission.json` raw asset).
 - **Edit map info** admin UI: collapsible artwork picker (closed by default), tighter layout, and slug-based **Replace image** uploads.
 - `POST /api/admin/sheet-row` no longer requires `ADMIN_SHEET_SECRET` (still protect publicly exposed deployments at the host).
