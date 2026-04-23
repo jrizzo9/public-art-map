@@ -3,10 +3,14 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@/components/mapbox-popup-theme.css";
 
-import mapboxgl, { type LngLatBoundsLike } from "mapbox-gl";
+import type {
+  LngLatBoundsLike,
+  Map as MapboxMap,
+  Popup as MapboxPopup,
+  MapMouseEvent,
+} from "mapbox-gl";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef } from "react";
-import markerStyles from "@/components/MapMarker.module.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import popupStyles from "@/components/MapPopup.module.css";
 import { markerColorForCategory } from "@/lib/category-colors";
 import type { Artwork } from "@/lib/sheet";
@@ -26,7 +30,7 @@ const FIT_BOUNDS_DURATION_MS = 1150;
 const FIT_BOUNDS_DEBOUNCE_MS = 320;
 
 /** Padding so markers / bounds stay in the visible map area (not under the floating panel or bottom sheet). */
-function mapChromePadding(map: mapboxgl.Map) {
+function mapChromePadding(map: MapboxMap) {
   const { width: w, height: h } = map.getContainer().getBoundingClientRect();
   if (!w || !h) {
     return { top: 48, right: 32, bottom: 120, left: 360 };
@@ -50,7 +54,7 @@ function mapChromePadding(map: mapboxgl.Map) {
   return { top, right, bottom, left };
 }
 
-function selectionFlyPadding(map: mapboxgl.Map) {
+function selectionFlyPadding(map: MapboxMap) {
   return mapChromePadding(map);
 }
 
@@ -104,10 +108,12 @@ export function MapView({
 }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
-  const markerBySlugRef = useRef(new Map<string, mapboxgl.Marker>());
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  type MapboxModule = typeof import("mapbox-gl");
+  type MapboxGL = MapboxModule["default"];
+  const mapboxglRef = useRef<MapboxGL | null>(null);
+  const mapRef = useRef<MapboxMap | null>(null);
+  const [mapReadyTick, setMapReadyTick] = useState(0);
+  const popupRef = useRef<MapboxPopup | null>(null);
   const ignoreNextMapClickRef = useRef(false);
   const hasFittedBoundsOnceRef = useRef(false);
   const onSelectSlugRef = useRef(onSelectSlug);
@@ -133,69 +139,108 @@ export function MapView({
     ] satisfies LngLatBoundsLike;
   }, [artworks]);
 
+  const geojson = useMemo<
+    GeoJSON.FeatureCollection<GeoJSON.Point, Record<string, unknown>>
+  >(() => {
+    return {
+      type: "FeatureCollection",
+      features: artworks
+        .filter((a) => Number.isFinite(a.lat) && Number.isFinite(a.lng))
+        .map((a) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [a.lng, a.lat] },
+          properties: {
+            slug: a.slug,
+            title: a.title,
+            category: a.category ?? null,
+            color: markerColorForCategory(a.category),
+          },
+        })),
+    };
+  }, [artworks]);
+
   useEffect(() => {
     if (!containerRef.current) return;
     if (mapRef.current) return;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+    let cancelled = false;
+    let ro: ResizeObserver | null = null;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: styleUrl || "mapbox://styles/mapbox/streets-v12",
-      center: [-97.1467, 31.5493],
-      zoom: 12,
-    });
+    (async () => {
+      const mod = await import("mapbox-gl");
+      if (cancelled) return;
+      const mapboxgl = mod.default;
+      mapboxglRef.current = mapboxgl;
 
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
-    mapRef.current = map;
+      const map = new mapboxgl.Map({
+        container: containerRef.current!,
+        style: styleUrl || "mapbox://styles/mapbox/streets-v12",
+        center: [-97.1467, 31.5493],
+        zoom: 12,
+      });
 
-    const container = containerRef.current;
-    const ro =
-      typeof ResizeObserver !== "undefined" && container
-        ? new ResizeObserver(() => {
-            map.resize();
-          })
-        : null;
-    ro?.observe(container);
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      mapRef.current = map;
+      setMapReadyTick((x) => x + 1);
+
+      const container = containerRef.current;
+      if (typeof ResizeObserver !== "undefined" && container) {
+        ro = new ResizeObserver(() => map.resize());
+        ro.observe(container);
+      }
+    })();
 
     return () => {
+      cancelled = true;
       ro?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
+      mapboxglRef.current = null;
     };
   }, [styleUrl]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const SOURCE_ID = "artworks";
+    const LAYER_ID = "artworks-circles";
 
-    for (const m of markersRef.current) m.remove();
-    markersRef.current = [];
-    markerBySlugRef.current.clear();
+    const ensure = () => {
+      // Source
+      const src = map.getSource(SOURCE_ID) as { setData?: (d: unknown) => void } | undefined;
+      if (!src) {
+        map.addSource(SOURCE_ID, {
+          type: "geojson",
+          data: geojson,
+        });
+      } else {
+        src.setData?.(geojson);
+      }
 
-    for (const art of artworks) {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.title = art.title;
-      el.setAttribute("aria-label", art.title);
-      el.className = markerStyles.markerDot;
-      el.style.background = markerColorForCategory(art.category);
-      el.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Mapbox will still emit a map click in some cases; ignore the next one.
-        ignoreNextMapClickRef.current = true;
-        onSelectSlugRef.current?.(art.slug);
-      });
+      // Layer
+      if (!map.getLayer(LAYER_ID)) {
+        map.addLayer({
+          id: LAYER_ID,
+          type: "circle",
+          source: SOURCE_ID,
+          paint: {
+            "circle-color": ["get", "color"],
+            "circle-radius": 5,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "rgba(0,0,0,0.25)",
+          },
+        });
+      }
+    };
 
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([art.lng, art.lat])
-        .addTo(map);
-      markersRef.current.push(marker);
-      markerBySlugRef.current.set(art.slug, marker);
+    if (map.isStyleLoaded()) {
+      ensure();
+      return;
     }
-  }, [artworks]);
+    map.once("load", ensure);
+  }, [geojson, mapReadyTick]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -216,29 +261,44 @@ export function MapView({
   }, [bounds]);
 
   useEffect(() => {
-    for (const art of artworks) {
-      const marker = markerBySlugRef.current.get(art.slug);
-      const el = marker?.getElement() as HTMLElement | undefined;
-      if (!el) continue;
-      const isHighlighted = art.slug === (highlightSlug || selectedSlug);
-      el.style.background = isHighlighted
-        ? "var(--primary)"
-        : markerColorForCategory(art.category);
-    }
-  }, [artworks, highlightSlug, selectedSlug]);
+    const map = mapRef.current;
+    if (!map) return;
+    const LAYER_ID = "artworks-circles";
+    if (!map.getLayer(LAYER_ID)) return;
+
+    const focus = highlightSlug || selectedSlug || "";
+    map.setPaintProperty(LAYER_ID, "circle-radius", [
+      "case",
+      ["==", ["get", "slug"], focus],
+      7,
+      5,
+    ]);
+    map.setPaintProperty(LAYER_ID, "circle-stroke-width", [
+      "case",
+      ["==", ["get", "slug"], focus],
+      2,
+      1,
+    ]);
+    map.setPaintProperty(LAYER_ID, "circle-stroke-color", [
+      "case",
+      ["==", ["get", "slug"], focus],
+      "rgba(0,0,0,0.45)",
+      "rgba(0,0,0,0.25)",
+    ]);
+  }, [highlightSlug, selectedSlug, mapReadyTick]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    const onMapClick = (e: mapboxgl.MapMouseEvent) => {
+    const onMapClick = (e: MapMouseEvent) => {
       if (ignoreNextMapClickRef.current) {
         ignoreNextMapClickRef.current = false;
         return;
       }
 
       const target = e.originalEvent?.target as HTMLElement | null;
-      if (target?.closest(".mapboxgl-marker, .mapboxgl-popup")) return;
+      if (target?.closest(".mapboxgl-popup")) return;
 
       onClearSelectionRef.current?.();
     };
@@ -251,6 +311,64 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const LAYER_ID = "artworks-circles";
+
+    const onClick = (e: unknown) => {
+      const evt = e as {
+        originalEvent?: MouseEvent;
+        features?: Array<{ properties?: Record<string, unknown> }>;
+      };
+      const slug =
+        (evt.features?.[0]?.properties?.slug as string | undefined) ?? undefined;
+      if (!slug) return;
+      evt.originalEvent?.preventDefault();
+      evt.originalEvent?.stopPropagation();
+      ignoreNextMapClickRef.current = true;
+      onSelectSlugRef.current?.(slug);
+    };
+
+    const setCursor = (cursor: string) => {
+      const canvas = map.getCanvas?.();
+      if (canvas) canvas.style.cursor = cursor;
+    };
+
+    const onEnter = () => setCursor("pointer");
+    const onLeave = () => setCursor("");
+
+    let attached = false;
+    const attachIfReady = () => {
+      if (attached) return;
+      if (!map.getLayer(LAYER_ID)) return;
+      map.on("click", LAYER_ID, onClick as never);
+      map.on("mouseenter", LAYER_ID, onEnter as never);
+      map.on("mouseleave", LAYER_ID, onLeave as never);
+      attached = true;
+    };
+
+    attachIfReady();
+    if (!attached) {
+      // Layer is added on `load` and can be recreated when the style changes.
+      map.on("load", attachIfReady);
+      map.on("styledata", attachIfReady);
+    }
+
+    return () => {
+      map.off("load", attachIfReady);
+      map.off("styledata", attachIfReady);
+      if (attached) {
+        map.off("click", LAYER_ID, onClick as never);
+        map.off("mouseenter", LAYER_ID, onEnter as never);
+        map.off("mouseleave", LAYER_ID, onLeave as never);
+        setCursor("");
+      }
+    };
+  }, [mapReadyTick]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const mapboxgl = mapboxglRef.current;
+    if (!mapboxgl) return;
 
     popupRef.current?.remove();
     popupRef.current = null;

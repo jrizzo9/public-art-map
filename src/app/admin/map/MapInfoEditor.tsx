@@ -153,10 +153,12 @@ function ImageUrlField({
   const trimmed = value.trim();
   const previewOk = /^https?:\/\//i.test(trimmed);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset preview state when URL changes */
   useEffect(() => {
     setPreviewBroken(false);
     setUploadErr(null);
   }, [trimmed]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

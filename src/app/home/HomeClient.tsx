@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
-import { MapView } from "@/components/MapView";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
+import mapPoster from "../../../public/map-poster.jpg";
 import {
   type HomeFiltersFromUrl,
   homeFiltersFromUrlEqual,
@@ -30,6 +32,13 @@ type FacetOption = { key: string; label: string };
 const UNCATEGORIZED_KEY = "__uncategorized__";
 const NO_COMMISSION_KEY = "__none__";
 const NO_COLLECTION_KEY = "__none__";
+
+const MapView = dynamic(
+  () => import("@/components/MapView").then((m) => m.MapView),
+  { ssr: false },
+);
+
+const EMPTY_SET = new Set<string>();
 
 function categoryFacetKey(a: Artwork): string {
   const t = a.category?.trim();
@@ -309,6 +318,31 @@ export function HomeClient({
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [mountMap, setMountMap] = useState(false);
+  const [mapAbsolute, setMapAbsolute] = useState(false);
+  const mapSectionRef = useRef<HTMLElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // UX: show the interactive map immediately on larger screens; keep mobile "click to load"
+  // to protect performance and avoid loading Mapbox unnecessarily on small devices.
+  useEffect(() => {
+    if (mountMap) return;
+    if (typeof window === "undefined") return;
+    if (window.matchMedia?.("(min-width: 641px)")?.matches) {
+      setMountMap(true);
+    }
+  }, [mountMap]);
+
+  // Mobile UX: once the map is mounted on narrow screens, force fullscreen map layout.
+  // This avoids leaving the map in a partially-sized "card" state on mobile.
+  useEffect(() => {
+    if (!mountMap) return;
+    if (mapAbsolute) return;
+    if (typeof window === "undefined") return;
+    if (window.matchMedia?.("(max-width: 640px)")?.matches) {
+      setMapAbsolute(true);
+    }
+  }, [mountMap, mapAbsolute]);
 
   /** Facet chips follow the query string so Back/Forward and shared URLs stay in sync. */
   const searchKey = searchParams.toString();
@@ -317,18 +351,19 @@ export function HomeClient({
     [searchKey],
   );
 
-  const selectedCategories = useMemo(
-    () => new Set(urlFilters.categories),
-    [urlFilters],
-  );
-  const selectedCommissions = useMemo(
-    () => new Set(urlFilters.commissions),
-    [urlFilters],
-  );
-  const selectedCollections = useMemo(
-    () => new Set(urlFilters.collections),
-    [urlFilters],
-  );
+  // Performance: until the map/list UI is mounted, skip expensive filtering/facet work.
+  const selectedCategories = useMemo(() => {
+    if (!mountMap) return EMPTY_SET;
+    return new Set(urlFilters.categories);
+  }, [mountMap, urlFilters.categories]);
+  const selectedCommissions = useMemo(() => {
+    if (!mountMap) return EMPTY_SET;
+    return new Set(urlFilters.commissions);
+  }, [mountMap, urlFilters.commissions]);
+  const selectedCollections = useMemo(() => {
+    if (!mountMap) return EMPTY_SET;
+    return new Set(urlFilters.collections);
+  }, [mountMap, urlFilters.collections]);
 
   /** Year inputs stay editable while typing; URL updates are debounced separately. */
   const [yearMin, setYearMin] = useState(initialFiltersFromUrl.yearMin);
@@ -339,23 +374,32 @@ export function HomeClient({
     [yearMin, yearMax],
   );
 
-  const facetUi = useMemo(
-    () =>
-      deriveFacetUi(
-        artworks,
-        yearParsed,
-        selectedCategories,
-        selectedCommissions,
-        selectedCollections,
-      ),
-    [
+  const facetUi = useMemo(() => {
+    if (!mountMap) {
+      return {
+        effectiveCategories: EMPTY_SET,
+        effectiveCommissions: EMPTY_SET,
+        effectiveCollections: EMPTY_SET,
+        categoryOptions: [] as FacetOption[],
+        commissionOptions: [] as FacetOption[],
+        collectionOptions: [] as FacetOption[],
+      };
+    }
+    return deriveFacetUi(
       artworks,
       yearParsed,
-      selectedCategories,
-      selectedCommissions,
-      selectedCollections,
-    ],
-  );
+      selectedCategories as Set<string>,
+      selectedCommissions as Set<string>,
+      selectedCollections as Set<string>,
+    );
+  }, [
+    mountMap,
+    artworks,
+    yearParsed,
+    selectedCategories,
+    selectedCommissions,
+    selectedCollections,
+  ]);
 
   const {
     effectiveCategories,
@@ -367,15 +411,40 @@ export function HomeClient({
   } = facetUi;
 
   const yearBounds = useMemo(() => {
+    if (!mountMap) {
+      return {
+        min: undefined as number | undefined,
+        max: undefined as number | undefined,
+      };
+    }
     const years = artworks
       .map((a) => a.year)
       .filter((y): y is number => y != null && Number.isFinite(y));
-    if (years.length === 0) return { min: undefined as number | undefined, max: undefined as number | undefined };
+    if (years.length === 0) {
+      return { min: undefined as number | undefined, max: undefined as number | undefined };
+    }
     return { min: Math.min(...years), max: Math.max(...years) };
-  }, [artworks]);
+  }, [mountMap, artworks]);
 
   const filtered = useMemo(() => {
+    if (!mountMap) return [];
+    const q = searchQuery.trim().toLowerCase();
     return artworks.filter((a) => {
+      if (q) {
+        const haystack = [
+          a.title,
+          a.artist,
+          a.category,
+          a.collection,
+          a.commission,
+          a.address,
+          a.description,
+        ]
+          .filter((x): x is string => typeof x === "string" && x.trim() !== "")
+          .join(" · ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       if (
         effectiveCategories.size > 0 &&
         !effectiveCategories.has(categoryFacetKey(a))
@@ -402,14 +471,16 @@ export function HomeClient({
     effectiveCommissions,
     effectiveCollections,
     yearParsed,
+    searchQuery,
   ]);
 
   /** When the query string changes from history navigation, align year fields with `ymin` / `ymax`. */
   /* eslint-disable react-hooks/set-state-in-effect -- year inputs are local for typing; history navigation must rest them from the URL. */
   useEffect(() => {
+    if (!mountMap) return;
     setYearMin(urlFilters.yearMin);
     setYearMax(urlFilters.yearMax);
-  }, [searchKey, urlFilters.yearMin, urlFilters.yearMax]);
+  }, [mountMap, searchKey, urlFilters.yearMin, urlFilters.yearMax]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pushFilterUrl = useCallback(() => {
@@ -438,8 +509,10 @@ export function HomeClient({
 
   /** Rewrite URL when facet pruning removes impossible chip keys (and after loading an outdated share link). */
   useEffect(() => {
+    if (!mountMap) return;
     pushFilterUrl();
   }, [
+    mountMap,
     effectiveCategories,
     effectiveCommissions,
     effectiveCollections,
@@ -448,9 +521,10 @@ export function HomeClient({
 
   /** Debounce year typing so we don’t rewrite the URL on every keystroke. */
   useEffect(() => {
+    if (!mountMap) return;
     const id = window.setTimeout(() => pushFilterUrl(), 400);
     return () => clearTimeout(id);
-  }, [yearMin, yearMax, pushFilterUrl]);
+  }, [mountMap, yearMin, yearMax, pushFilterUrl]);
 
   const replaceQueryWith = useCallback(
     (nextFilters: HomeFiltersFromUrl) => {
@@ -586,6 +660,66 @@ export function HomeClient({
     yearMax,
   ]);
 
+  const scrollToMap = useCallback(() => {
+    mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setMountMap(true);
+    setMapAbsolute(true);
+  }, []);
+
+  const exitFullscreenMap = useCallback(() => {
+    setMapAbsolute(false);
+    // Keep map mounted; just return to normal page flow.
+    mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  useEffect(() => {
+    if (!mapAbsolute) return;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+    };
+  }, [mapAbsolute]);
+
+  useEffect(() => {
+    if (!mapAbsolute) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitFullscreenMap();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mapAbsolute, exitFullscreenMap]);
+
+  const heroStats = useMemo(() => {
+    const categories = new Set<string>();
+    let minYear: number | null = null;
+    let maxYear: number | null = null;
+
+    for (const a of artworks) {
+      if (a.category?.trim()) categories.add(a.category.trim());
+      if (a.year != null && Number.isFinite(a.year)) {
+        minYear = minYear == null ? a.year : Math.min(minYear, a.year);
+        maxYear = maxYear == null ? a.year : Math.max(maxYear, a.year);
+      }
+    }
+
+    const yearRange =
+      minYear != null && maxYear != null
+        ? minYear === maxYear
+          ? String(minYear)
+          : `${minYear}–${maxYear}`
+        : null;
+
+    return {
+      artworkCount: artworks.length,
+      categoryCount: categories.size,
+      yearRange,
+    };
+  }, [artworks]);
+
   return (
     <ViewTransition
       enter={{
@@ -601,30 +735,114 @@ export function HomeClient({
       default="none"
     >
       <div className={styles.shell}>
-      <SiteBrandBar titleAs="h1" />
+        <SiteBrandBar titleAs="p" />
 
-      <section className={styles.map}>
-        <MapView
-          artworks={filtered}
-          selectedSlug={selectedSlug}
-          highlightSlug={hoveredSlug}
-          onSelectSlug={onSelectArtwork}
-          onClearSelection={onClearSelection}
-          styleUrl={mapboxStyleUrl}
-        />
-      </section>
-
-      <aside
-        className={`${styles.panel}${filtersOpen ? ` ${styles.panelFiltersOpen}` : ""}`}
-        aria-label="Artwork list"
-      >
-          <details
-            className={styles.filterDetails}
-            onToggle={(e) => setFiltersOpen((e.currentTarget as HTMLDetailsElement).open)}
+        {mapAbsolute ? (
+          <button
+            type="button"
+            className={styles.exitMapBtn}
+            onClick={exitFullscreenMap}
+            aria-label="Exit fullscreen map"
           >
-            <summary className={styles.filterSummary} id="filters-summary">
-              <span className={styles.filterChevron} aria-hidden />
-              <span>Filters</span>
+            Exit map
+          </button>
+        ) : null}
+
+        <header className={styles.intro} aria-label="Page introduction">
+          <div className={styles.introInner}>
+            <h1 className={styles.heroTitle}>Waco’s Public Art Map</h1>
+            <p className={styles.heroLead}>
+              Find murals, sculptures, fountains, and more. Filter by category,
+              commission, collection, or year — then jump from the map to details.
+            </p>
+            <div className={styles.heroActions}>
+              <button
+                type="button"
+                className={`${styles.heroBtn} ${styles.heroBtnPrimary}`}
+                onClick={scrollToMap}
+              >
+                Explore the map
+              </button>
+              {submitEnabled ? (
+                <Link className={styles.heroBtn} href="/submit" prefetch={false}>
+                  Submit public art
+                </Link>
+              ) : (
+                <span
+                  className={`${styles.heroBtn} ${styles.heroBtnDisabled}`}
+                  aria-disabled="true"
+                  title="Submissions are paused"
+                >
+                  Submit public art
+                </span>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section
+          ref={(el) => {
+            mapSectionRef.current = el;
+          }}
+          className={`${styles.mapSection}${mapAbsolute ? ` ${styles.mapSectionAbsolute}` : ""}`}
+          aria-label="Interactive map"
+        >
+          <div
+            className={`${styles.mapCard}${!mountMap ? ` ${styles.mapCardPoster}` : ""}${
+              mapAbsolute ? ` ${styles.mapCardAbsolute}` : ""
+            }`}
+          >
+            <div className={styles.mapViewport}>
+              {mountMap ? (
+                <MapView
+                  artworks={filtered}
+                  selectedSlug={selectedSlug}
+                  highlightSlug={hoveredSlug}
+                  onSelectSlug={onSelectArtwork}
+                  onClearSelection={onClearSelection}
+                  styleUrl={mapboxStyleUrl}
+                />
+              ) : (
+                <div className={styles.mapPoster} aria-hidden>
+                  <Image
+                    src={mapPoster}
+                    alt=""
+                    fill
+                    priority
+                    fetchPriority="high"
+                    sizes="(max-width: 640px) 100vw, 1100px"
+                    className={styles.mapPosterImg}
+                    quality={70}
+                    placeholder="blur"
+                  />
+                </div>
+              )}
+            </div>
+
+      {mountMap ? (
+        <aside
+          className={`${styles.panel}${filtersOpen ? ` ${styles.panelFiltersOpen}` : ""}`}
+          aria-label="Artwork list"
+        >
+          <div className={styles.filterHeader}>
+            <input
+              className={styles.filterSearch}
+              type="search"
+              placeholder="Search artworks…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              className={styles.filterSummaryBtn}
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-expanded={filtersOpen}
+              aria-controls="filters-panel"
+            >
+              {filtersOpen ? "List" : "Filters"}
               {activeFilterCount > 0 ? (
                 <span
                   className={styles.filterBadge}
@@ -635,242 +853,229 @@ export function HomeClient({
                   {activeFilterCount}
                 </span>
               ) : null}
-            </summary>
-            <div
-              className={styles.filtersInner}
-              role="group"
-              aria-labelledby="filters-summary"
-            >
-            <div className={styles.filterRow}>
-              <span className={styles.caption}>Category</span>
-              <div className={styles.filterActions}>
-                <button
-                  type="button"
-                  className={styles.filterLink}
-                  disabled={effectiveCategories.size === 0}
-                  onClick={clearCategoryFacet}
-                >
-                  Any
-                </button>
-              </div>
-            </div>
-            <ul className={styles.filterToggleList} aria-label="Categories">
-              {categoryOptions.map((o) => {
-                const on = effectiveCategories.has(o.key);
-                const dotColor =
-                  o.key === UNCATEGORIZED_KEY
-                    ? markerColorForCategory(undefined)
-                    : markerColorForCategory(o.label);
-                return (
-                  <li key={o.key}>
-                    <button
-                      type="button"
-                      className={`${styles.filterToggle}${
-                        on ? ` ${styles.filterToggleCatOn}` : ""
-                      }`}
-                      style={{ "--cat": dotColor } as CSSProperties}
-                      aria-pressed={on}
-                      onClick={() => toggleCategory(o.key)}
-                    >
-                      <span
-                        className={styles.filterToggleSwatch}
-                        style={{ background: dotColor }}
-                        aria-hidden
-                      />
-                      <span className={styles.filterToggleText}>{o.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className={styles.filterRow}>
-              <span className={styles.caption}>Commission</span>
-              <div className={styles.filterActions}>
-                <button
-                  type="button"
-                  className={styles.filterLink}
-                  disabled={effectiveCommissions.size === 0}
-                  onClick={clearCommissionFacet}
-                >
-                  Any
-                </button>
-              </div>
-            </div>
-            <ul className={styles.filterToggleList} aria-label="Commission">
-              {commissionOptions.map((o) => {
-                const on = effectiveCommissions.has(o.key);
-                return (
-                  <li key={o.key}>
-                    <button
-                      type="button"
-                      className={`${styles.filterToggle}${
-                        on ? ` ${styles.filterToggleOn}` : ""
-                      }`}
-                      aria-pressed={on}
-                      onClick={() => toggleCommission(o.key)}
-                    >
-                      <span className={styles.filterToggleText}>{o.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className={styles.filterRow}>
-              <span className={styles.caption}>Collection</span>
-              <div className={styles.filterActions}>
-                <button
-                  type="button"
-                  className={styles.filterLink}
-                  disabled={effectiveCollections.size === 0}
-                  onClick={clearCollectionFacet}
-                >
-                  Any
-                </button>
-              </div>
-            </div>
-            <ul className={styles.filterToggleList} aria-label="Collection">
-              {collectionOptions.map((o) => {
-                const on = effectiveCollections.has(o.key);
-                return (
-                  <li key={o.key}>
-                    <button
-                      type="button"
-                      className={`${styles.filterToggle}${
-                        on ? ` ${styles.filterToggleOn}` : ""
-                      }`}
-                      aria-pressed={on}
-                      onClick={() => toggleCollection(o.key)}
-                    >
-                      <span className={styles.filterToggleText}>{o.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className={styles.yearRow}>
-              <div className={styles.yearField}>
-                <label className={styles.label} htmlFor="year-from">
-                  From
-                </label>
-                <input
-                  id="year-from"
-                  className={styles.input}
-                  inputMode="numeric"
-                  placeholder={
-                    yearBounds.min != null ? String(yearBounds.min) : "Any"
-                  }
-                  value={yearMin}
-                  onChange={(e) => setYearMin(e.target.value)}
-                  aria-describedby="year-hint"
-                />
-              </div>
-              <div className={styles.yearField}>
-                <label className={styles.label} htmlFor="year-to">
-                  To
-                </label>
-                <input
-                  id="year-to"
-                  className={styles.input}
-                  inputMode="numeric"
-                  placeholder={
-                    yearBounds.max != null ? String(yearBounds.max) : "Any"
-                  }
-                  value={yearMax}
-                  onChange={(e) => setYearMax(e.target.value)}
-                  aria-describedby="year-hint"
-                />
-              </div>
-            </div>
-            <p id="year-hint" className={styles.srOnly}>
-              Year range only includes entries with a year listed. Leave blank
-              for any year.
-            </p>
-
-            {activeFilterCount > 0 && (
-              <button
-                type="button"
-                className={styles.clearFilters}
-                onClick={clearFilters}
-              >
-                Clear ({activeFilterCount})
-              </button>
-            )}
-            </div>
-          </details>
+            </button>
+          </div>
 
         <div className={styles.panelBody}>
-          <ul className={styles.ul}>
-            {filtered.map((a) => (
-              <li key={a.slug} className={styles.li}>
-                <div className={styles.listItemRow}>
+          {filtersOpen ? (
+            <div className={styles.filtersInner} role="group" id="filters-panel">
+              <div className={styles.filterRow}>
+                <span className={styles.caption}>Category</span>
+                <div className={styles.filterActions}>
                   <button
                     type="button"
-                    className={styles.item}
-                    onClick={() => setSelectedSlug(a.slug)}
-                    onMouseEnter={() => setHoveredSlug(a.slug)}
-                    onMouseLeave={() => setHoveredSlug(undefined)}
-                    onFocus={() => setHoveredSlug(a.slug)}
-                    onBlur={() => setHoveredSlug(undefined)}
+                    className={styles.filterLink}
+                    disabled={effectiveCategories.size === 0}
+                    onClick={clearCategoryFacet}
                   >
-                    <span className={styles.itemRow}>
-                      <span
-                        className={styles.listDot}
-                        style={{
-                          background: markerColorForCategory(a.category),
-                        }}
-                        aria-hidden
-                      />
-                      <span className={styles.title}>{a.title}</span>
-                    </span>
-                    <span className={styles.meta}>
-                      {[
-                        a.collection,
-                        a.artist,
-                        a.year != null ? String(a.year) : undefined,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
+                    Any
                   </button>
-                  <Link
-                    href={`/art/${a.slug}`}
-                    className={styles.detailLink}
-                    prefetch
-                    transitionTypes={["nav-forward"]}
-                  >
-                    Details
-                  </Link>
                 </div>
-              </li>
-            ))}
-          </ul>
-          <p className={styles.count}>
-            Showing <strong>{filtered.length}</strong> of <strong>{artworks.length}</strong>
-          </p>
-        </div>
-      </aside>
+              </div>
+              <ul className={styles.filterToggleList} aria-label="Categories">
+                {categoryOptions.map((o) => {
+                  const on = effectiveCategories.has(o.key);
+                  const dotColor =
+                    o.key === UNCATEGORIZED_KEY
+                      ? markerColorForCategory(undefined)
+                      : markerColorForCategory(o.label);
+                  return (
+                    <li key={o.key}>
+                      <button
+                        type="button"
+                        className={`${styles.filterToggle}${
+                          on ? ` ${styles.filterToggleCatOn}` : ""
+                        }`}
+                        style={{ "--cat": dotColor } as CSSProperties}
+                        aria-pressed={on}
+                        onClick={() => toggleCategory(o.key)}
+                      >
+                        <span
+                          className={styles.filterToggleSwatch}
+                          style={{ background: dotColor }}
+                          aria-hidden
+                        />
+                        <span className={styles.filterToggleText}>{o.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
 
-      {submitEnabled ? (
-        <Link
-          href="/submit"
-          className={styles.floatingSubmitBtn}
-          prefetch
-          transitionTypes={["nav-forward"]}
-        >
-          Submit Public Art
-        </Link>
-      ) : (
-        <span
-          className={`${styles.floatingSubmitBtn} ${styles.floatingSubmitBtnDisabled}`}
-          aria-disabled="true"
-          title="Submissions are paused"
-        >
-          Submit Public Art
-        </span>
-      )}
+              <div className={styles.filterRow}>
+                <span className={styles.caption}>Commission</span>
+                <div className={styles.filterActions}>
+                  <button
+                    type="button"
+                    className={styles.filterLink}
+                    disabled={effectiveCommissions.size === 0}
+                    onClick={clearCommissionFacet}
+                  >
+                    Any
+                  </button>
+                </div>
+              </div>
+              <ul className={styles.filterToggleList} aria-label="Commission">
+                {commissionOptions.map((o) => {
+                  const on = effectiveCommissions.has(o.key);
+                  return (
+                    <li key={o.key}>
+                      <button
+                        type="button"
+                        className={`${styles.filterToggle}${
+                          on ? ` ${styles.filterToggleOn}` : ""
+                        }`}
+                        aria-pressed={on}
+                        onClick={() => toggleCommission(o.key)}
+                      >
+                        <span className={styles.filterToggleText}>{o.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className={styles.filterRow}>
+                <span className={styles.caption}>Collection</span>
+                <div className={styles.filterActions}>
+                  <button
+                    type="button"
+                    className={styles.filterLink}
+                    disabled={effectiveCollections.size === 0}
+                    onClick={clearCollectionFacet}
+                  >
+                    Any
+                  </button>
+                </div>
+              </div>
+              <ul className={styles.filterToggleList} aria-label="Collection">
+                {collectionOptions.map((o) => {
+                  const on = effectiveCollections.has(o.key);
+                  return (
+                    <li key={o.key}>
+                      <button
+                        type="button"
+                        className={`${styles.filterToggle}${
+                          on ? ` ${styles.filterToggleOn}` : ""
+                        }`}
+                        aria-pressed={on}
+                        onClick={() => toggleCollection(o.key)}
+                      >
+                        <span className={styles.filterToggleText}>{o.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className={styles.yearRow}>
+                <div className={styles.yearField}>
+                  <label className={styles.label} htmlFor="year-from">
+                    From
+                  </label>
+                  <input
+                    id="year-from"
+                    className={styles.input}
+                    inputMode="numeric"
+                    placeholder={
+                      yearBounds.min != null ? String(yearBounds.min) : "Any"
+                    }
+                    value={yearMin}
+                    onChange={(e) => setYearMin(e.target.value)}
+                    aria-describedby="year-hint"
+                  />
+                </div>
+                <div className={styles.yearField}>
+                  <label className={styles.label} htmlFor="year-to">
+                    To
+                  </label>
+                  <input
+                    id="year-to"
+                    className={styles.input}
+                    inputMode="numeric"
+                    placeholder={
+                      yearBounds.max != null ? String(yearBounds.max) : "Any"
+                    }
+                    value={yearMax}
+                    onChange={(e) => setYearMax(e.target.value)}
+                    aria-describedby="year-hint"
+                  />
+                </div>
+              </div>
+              <p id="year-hint" className={styles.srOnly}>
+                Year range only includes entries with a year listed. Leave blank
+                for any year.
+              </p>
+
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  className={styles.clearFilters}
+                  onClick={clearFilters}
+                >
+                  Clear ({activeFilterCount})
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <ul className={styles.ul}>
+                {filtered.map((a) => (
+                  <li key={a.slug} className={styles.li}>
+                    <div className={styles.listItemRow}>
+                      <button
+                        type="button"
+                        className={styles.item}
+                        onClick={() => setSelectedSlug(a.slug)}
+                        onMouseEnter={() => setHoveredSlug(a.slug)}
+                        onMouseLeave={() => setHoveredSlug(undefined)}
+                        onFocus={() => setHoveredSlug(a.slug)}
+                        onBlur={() => setHoveredSlug(undefined)}
+                      >
+                        <span className={styles.itemRow}>
+                          <span
+                            className={styles.listDot}
+                            style={{
+                              background: markerColorForCategory(a.category),
+                            }}
+                            aria-hidden
+                          />
+                          <span className={styles.title}>{a.title}</span>
+                        </span>
+                        <span className={styles.meta}>
+                          {[
+                            a.collection,
+                            a.artist,
+                            a.year != null ? String(a.year) : undefined,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </button>
+                      <Link
+                        href={`/art/${a.slug}`}
+                        className={styles.detailLink}
+                        prefetch={false}
+                        transitionTypes={["nav-forward"]}
+                      >
+                        Details
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className={styles.count}>
+                Showing <strong>{filtered.length}</strong> of{" "}
+                <strong>{artworks.length}</strong>
+              </p>
+            </>
+          )}
+        </div>
+        </aside>
+      ) : null}
+
+          </div>
+        </section>
     </div>
     </ViewTransition>
   );

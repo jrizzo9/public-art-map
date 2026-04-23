@@ -4,7 +4,7 @@
   position: fixed;
   top: max(12px, env(safe-area-inset-top, 0px));
   left: max(12px, env(safe-area-inset-left, 0px));
-  z-index: 3;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -49,8 +49,6 @@
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--foreground);
-  text-shadow:
-    0 0 18px color-mix(in oklch, var(--background) 72%, transparent),
-    0 1px 2px color-mix(in oklch, var(--background) 35%, transparent);
+  color: #000;
+  text-shadow: none;
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { HomeClient } from "./home/HomeClient";
-import { parseHomeFiltersFromPageSearchParams } from "./home/home-filter-url";
+import type { HomeFiltersFromUrl } from "./home/home-filter-url";
 import { env } from "@/lib/env";
 import { getArtworks } from "@/lib/sheet";
 import styles from "./home/home.module.css";
@@ -12,18 +12,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export const dynamic = "force-static";
+
+const EMPTY_FILTERS: HomeFiltersFromUrl = {
+  categories: [],
+  commissions: [],
+  collections: [],
+  yearMin: "",
+  yearMax: "",
+};
+
+export default async function Home() {
   const mapboxStyleUrl = env.NEXT_PUBLIC_MAPBOX_STYLE_URL();
-  const sp = await searchParams;
-  const initialFiltersFromUrl = parseHomeFiltersFromPageSearchParams(sp);
   return (
     <HomeServer
       mapboxStyleUrl={mapboxStyleUrl}
-      initialFiltersFromUrl={initialFiltersFromUrl}
+      initialFiltersFromUrl={EMPTY_FILTERS}
     />
   );
 }
@@ -33,7 +37,7 @@ async function HomeServer({
   initialFiltersFromUrl,
 }: {
   mapboxStyleUrl: string;
-  initialFiltersFromUrl: ReturnType<typeof parseHomeFiltersFromPageSearchParams>;
+  initialFiltersFromUrl: HomeFiltersFromUrl;
 }) {
   const artworks = await getArtworks();
   const submitEnabled = env.submitPublicArtEnabled();

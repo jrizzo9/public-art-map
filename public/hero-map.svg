@@ -1,0 +1,45 @@
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.55" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.18" />
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="0.6" />
+    </filter>
+  </defs>
+
+  <!-- A subtle map-ish linework pattern: curves + cross-streets + a few arterials -->
+  <g filter="url(#soft)" stroke="url(#fade)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-40 170 C 210 110, 390 230, 620 190 C 840 150, 1030 40, 1490 120" stroke-width="2.8" />
+    <path d="M-60 320 C 260 420, 520 260, 720 320 C 980 400, 1140 520, 1510 430" stroke-width="2.6" />
+    <path d="M-50 520 C 240 470, 430 610, 660 560 C 910 500, 1110 360, 1510 510" stroke-width="2.6" />
+    <path d="M-40 690 C 220 650, 460 770, 720 720 C 980 670, 1160 610, 1510 760" stroke-width="2.6" />
+
+    <path d="M160 -30 C 220 220, 130 360, 210 520 C 310 720, 220 860, 280 940" stroke-width="2.1" />
+    <path d="M390 -40 C 440 220, 360 380, 430 550 C 520 760, 470 860, 520 960" stroke-width="2.0" />
+    <path d="M660 -40 C 700 220, 630 410, 710 560 C 820 760, 760 860, 820 960" stroke-width="2.0" />
+    <path d="M920 -40 C 980 220, 910 380, 980 550 C 1080 760, 1010 860, 1060 960" stroke-width="2.0" />
+    <path d="M1180 -30 C 1260 220, 1180 360, 1250 520 C 1350 720, 1260 860, 1320 940" stroke-width="2.1" />
+
+    <!-- small cross-streets -->
+    <path d="M120 248 H 350" stroke-width="1.55" />
+    <path d="M300 430 H 560" stroke-width="1.55" />
+    <path d="M520 260 H 820" stroke-width="1.55" />
+    <path d="M720 420 H 1000" stroke-width="1.55" />
+    <path d="M930 300 H 1240" stroke-width="1.55" />
+    <path d="M980 620 H 1320" stroke-width="1.55" />
+    <path d="M240 640 H 520" stroke-width="1.55" />
+    <path d="M520 740 H 820" stroke-width="1.55" />
+  </g>
+
+  <!-- a few nodes -->
+  <g fill="#ffffff" fill-opacity="0.18">
+    <circle cx="340" cy="430" r="6" />
+    <circle cx="720" cy="320" r="6" />
+    <circle cx="980" cy="550" r="6" />
+    <circle cx="520" cy="740" r="6" />
+    <circle cx="1180" cy="300" r="6" />
+  </g>
+</svg>
+

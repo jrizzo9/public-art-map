@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Map home **filter query parameters** (`cat`, `comm`, `coll`, `ymin`, `ymax`) so filter state is **shareable** and works with **browser history**; the home page reads `searchParams` on the server for a matching first paint.
+- Home hero section (headline + description + CTAs) above the interactive map.
+- `pnpm psi` script (`scripts/psi.mjs`) to run PageSpeed Insights from the terminal.
+- Home panel search input (refines the map + list).
+- Home panel now toggles between **Filters** and **List** modes (only one visible at a time).
+- Fullscreen map **Exit map** control (button) plus **Escape** key shortcut.
+- Map home **filter query parameters** (`cat`, `comm`, `coll`, `ymin`, `ymax`) so filter state is **shareable** and works with **browser history**.
 - **Admin** password sign-in (`ADMIN_PASSWORD`) with an **HTTP-only session cookie** (JWT via **`jose`**), **`POST /api/admin/auth`**, **`/admin/login`**, **middleware** protecting **`/admin`** and **`/api/admin/*`** (except the auth route), **Sign out** on the admin page, and an admin **toolbar**.
 - **Admin** layout **site navigation** (Map, Art, optional Submit, Admin) for quick moves between sections.
 - **`NEXT_PUBLIC_SUBMIT_ENABLED`**: when set to `true`, enables the home **Submit** control, **`/submit`**, and includes **`/submit`** in **`sitemap.xml`**; when off, **`/submit`** redirects to **`/`**.
@@ -57,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Home map now loads on interaction, and **Explore the map** expands the map into a full-viewport mode (scroll locked while active).
+- Home landing layout redesigned (centered intro + rounded map card) and the interactive Mapbox map is now **deferred until clicking Explore the map** (poster image shown before load for better PageSpeed).
+- Home route (`/`) now prerenders as **static** content (avoids server data fetch in the initial request path; filter state still syncs to the URL once the map UI is mounted).
+- Desktop/tablet now auto-mounts the interactive map; mobile keeps click-to-load and enters fullscreen map layout after mounting.
+- Home background updated to a site-wide dark gradient, with a subtle map-card glow.
+- Home landing background includes a subtle **lighter top wash** so the fixed logo bar stays readable.
+- Map dots are rendered as a Mapbox **GeoJSON layer** (instead of DOM markers) to reduce main-thread work.
 - **`POST /api/admin/sheet-row`** prefers **direct Google Sheets API** updates when **`SHEET_ID`** + **`GOOGLE_SERVICE_ACCOUNT_JSON`** are configured; **Apps Script** (`SHEET_EDIT_API_URL` + token) is used **only** when that service-account path is incomplete.
 - **`.env.example`**: documents **admin password** auth, **`NEXT_PUBLIC_SUBMIT_ENABLED`**, and **Sheets API–first** sheet edits (Apps Script as fallback).
 - Public submission **finalize** persists metadata to the **Submissions** Google Sheet (requires `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON`); Cloudinary stores **photos only** (no `submission.json` raw asset).
@@ -95,10 +107,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **In-admin** Cloudinary **ImageUploader** and **CloudinaryLibrary** UI (upload + browse grid on `/admin`); server routes `POST /api/admin/cloudinary` and `GET /api/admin/cloudinary/library` remain for scripts and integrations.
 - Apps Script–based live Google Sheet editing from `/admin`.
 - **Map popup preview:** remove the **Embed →** link (embed routes still exist for Webflow iframes).
-- **Free-text search** on the map home panel (refining is via filters only).
+- Home floating **Submit Public Art** button (submit CTA lives in the intro when enabled).
+- Home rotating featured artwork hero (replaced by a simpler intro + deferred map poster).
 
 ### Fixed
 
+- Map dots are clickable reliably by attaching the Mapbox layer click handler after the layer is added (and after style reloads).
 - Cloudinary **signed upload** parameters for browser-direct `image/upload` and server `raw`/`image` uploads align with Cloudinary’s signature verification (omit `resource_type` from the signed parameter set for those endpoints).
 - `sitemap.xml` and `robots.txt` now default to `https://map.creativewaco.org` in production (avoids `localhost` URLs when `NEXT_PUBLIC_SITE_URL` is unset).
 - Add descriptive `alt` text to **Nearby art** thumbnails for better accessibility/SEO.

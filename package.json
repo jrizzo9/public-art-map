@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "psi": "node scripts/psi.mjs",
     "download:drive-photos": "node scripts/download-drive-photos.mjs",
     "images:web-ready": "node scripts/make-web-ready-images.mjs",
     "cloudinary:upload-and-update-sheet": "node scripts/upload-web-ready-to-cloudinary-and-update-sheet.mjs",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@google-cloud/local-auth": "^3.0.1",
+    "@next/bundle-analyzer": "^16.2.4",
     "@tailwindcss/postcss": "^4.2.3",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.2",
