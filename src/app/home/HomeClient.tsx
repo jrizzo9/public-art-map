@@ -319,6 +319,7 @@ export function HomeClient({
   const [mountMap, setMountMap] = useState(false);
   const [mapAbsolute, setMapAbsolute] = useState(false);
   const mapSectionRef = useRef<HTMLElement | null>(null);
+  const didAutoFullscreenMapRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // UX: show the interactive map immediately on larger screens; keep mobile "click to load"
@@ -338,6 +339,8 @@ export function HomeClient({
     if (mapAbsolute) return;
     if (typeof window === "undefined") return;
     if (window.matchMedia?.("(max-width: 640px)")?.matches) {
+      if (didAutoFullscreenMapRef.current) return;
+      didAutoFullscreenMapRef.current = true;
       setMapAbsolute(true);
     }
   }, [mountMap, mapAbsolute]);
@@ -661,6 +664,9 @@ export function HomeClient({
   const scrollToMap = useCallback(() => {
     mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setMountMap(true);
+    if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)")?.matches) {
+      didAutoFullscreenMapRef.current = true;
+    }
     setMapAbsolute(true);
   }, []);
 
@@ -807,6 +813,7 @@ export function HomeClient({
                   onClick={() => {
                     setMountMap(true);
                     if (window.matchMedia?.("(max-width: 640px)")?.matches) {
+                      didAutoFullscreenMapRef.current = true;
                       setMapAbsolute(true);
                     }
                   }}

@@ -238,6 +238,7 @@
 
 .mapCardPoster .mapViewport {
   position: relative;
+  height: 100%;
 }
 
 .mapCardAbsolute {
@@ -276,12 +277,38 @@
 .mapLoadBtn {
   width: 100%;
   height: 100%;
-  border: 0;
+  display: block;
+  border: 1px solid color-mix(in oklch, var(--foreground) 14%, transparent);
   padding: 0;
   cursor: pointer;
   background:
-    radial-gradient(1200px 800px at 20% 20%, rgba(255,255,255,0.06), rgba(0,0,0,0)),
+    radial-gradient(
+      900px 520px at 20% 10%,
+      color-mix(in oklch, var(--primary) 14%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.65)),
     var(--card);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 18px 40px rgba(0, 0, 0, 0.08);
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.mapLoadBtn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 22px 50px rgba(0, 0, 0, 0.1);
+}
+
+.mapLoadBtn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent),
+    0 22px 50px rgba(0, 0, 0, 0.1);
 }
 
 .mapLoadLabel {
@@ -289,15 +316,20 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  color: var(--muted-foreground);
-  font-size: 14px;
+  padding: 24px 18px;
+  text-align: center;
+  color: color-mix(in oklch, var(--foreground) 86%, transparent);
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 
 .sub {
   margin: 6px 0 0 0;
-  color: var(--panel-muted);
+  color: color-mix(in oklch, var(--muted-foreground) 92%, transparent);
   max-width: 55ch;
   font-size: 12px;
+  font-weight: 550;
 }
 
 .panel {
@@ -470,15 +502,13 @@
   display: grid;
   gap: 5px;
   min-width: 0;
+  min-height: 100%;
 }
 
 .filtersInner {
-  /* Mobile: allow long filter lists to scroll inside the bottom sheet. */
-  max-height: 40vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
+  /* Let the panel body handle scrolling so filters can fill available space. */
+  max-height: none;
+  overflow: visible;
 }
 
 .srOnly {
@@ -750,6 +780,18 @@
 }
 
 @media (max-width: 640px) {
+  .exitMapBtn {
+    /* Avoid Mapbox top-right controls + bottom sheet; keep centered under brand bar. */
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 52px);
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    padding: 10px 12px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
   .intro {
     padding-top: calc(76px + env(safe-area-inset-top, 0px));
   }
@@ -810,7 +852,7 @@
     box-shadow: var(--shadow-lg);
     padding-bottom: env(safe-area-inset-bottom, 0);
     padding-top: 0;
-    overflow: visible;
+    overflow: hidden;
   }
 
   /* When the filters menu is open, expand into a true bottom-sheet. */

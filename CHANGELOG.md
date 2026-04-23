@@ -114,6 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mobile fullscreen map: prevent “Exit map” from immediately re-entering fullscreen, and adjust button placement so it doesn’t overlap map UI.
 - Map dots are clickable reliably by attaching the Mapbox layer click handler after the layer is added (and after style reloads).
 - Cloudinary **signed upload** parameters for browser-direct `image/upload` and server `raw`/`image` uploads align with Cloudinary’s signature verification (omit `resource_type` from the signed parameter set for those endpoints).
 - `sitemap.xml` and `robots.txt` now default to `https://map.creativewaco.org` in production (avoids `localhost` URLs when `NEXT_PUBLIC_SITE_URL` is unset).
