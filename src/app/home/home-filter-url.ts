@@ -11,6 +11,8 @@ export type HomeFiltersFromUrl = {
   collections: string[];
   yearMin: string;
   yearMax: string;
+  /** `fs=1` indicates the map is in fullscreen mode. */
+  fullscreen: boolean;
 };
 
 const EMPTY: HomeFiltersFromUrl = {
@@ -19,6 +21,7 @@ const EMPTY: HomeFiltersFromUrl = {
   collections: [],
   yearMin: "",
   yearMax: "",
+  fullscreen: false,
 };
 
 function splitKeys(raw: string | string[] | undefined): string[] {
@@ -38,12 +41,14 @@ function splitKeys(raw: string | string[] | undefined): string[] {
 export function parseHomeFiltersFromPageSearchParams(
   sp: Record<string, string | string[] | undefined>,
 ): HomeFiltersFromUrl {
+  const fs = Array.isArray(sp.fs) ? sp.fs[0] : sp.fs;
   return {
     categories: splitKeys(sp.cat),
     commissions: splitKeys(sp.comm),
     collections: splitKeys(sp.coll),
     yearMin: typeof sp.ymin === "string" ? sp.ymin.trim() : "",
     yearMax: typeof sp.ymax === "string" ? sp.ymax.trim() : "",
+    fullscreen: fs === "1" || fs === "true",
   };
 }
 
@@ -56,6 +61,7 @@ export function parseHomeFiltersFromUrlSearchParams(
     collections: [...new Set(params.getAll("coll").map((s) => s.trim().toLowerCase()).filter(Boolean))],
     yearMin: params.get("ymin")?.trim() ?? "",
     yearMax: params.get("ymax")?.trim() ?? "",
+    fullscreen: params.get("fs") === "1" || params.get("fs") === "true",
   };
 }
 
@@ -69,7 +75,8 @@ export function homeFiltersFromUrlEqual(a: HomeFiltersFromUrl, b: HomeFiltersFro
     sameList(sort(a.commissions), sort(b.commissions)) &&
     sameList(sort(a.collections), sort(b.collections)) &&
     a.yearMin === b.yearMin &&
-    a.yearMax === b.yearMax
+    a.yearMax === b.yearMax &&
+    a.fullscreen === b.fullscreen
   );
 }
 
@@ -79,7 +86,8 @@ export function serializeHomeFiltersToQueryString(f: HomeFiltersFromUrl): string
     f.commissions.length > 0 ||
     f.collections.length > 0 ||
     f.yearMin !== "" ||
-    f.yearMax !== "";
+    f.yearMax !== "" ||
+    f.fullscreen;
 
   if (!has) return "";
 
@@ -89,6 +97,7 @@ export function serializeHomeFiltersToQueryString(f: HomeFiltersFromUrl): string
   for (const v of [...f.collections].sort()) p.append("coll", v);
   if (f.yearMin !== "") p.set("ymin", f.yearMin);
   if (f.yearMax !== "") p.set("ymax", f.yearMax);
+  if (f.fullscreen) p.set("fs", "1");
   return p.toString();
 }
 

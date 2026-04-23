@@ -293,6 +293,7 @@ function filtersFromEffectiveAndYear(
   effectiveCollections: Set<string>,
   yearMin: string,
   yearMax: string,
+  fullscreen: boolean,
 ): HomeFiltersFromUrl {
   return {
     categories: [...effectiveCategories].sort(),
@@ -300,6 +301,7 @@ function filtersFromEffectiveAndYear(
     collections: [...effectiveCollections].sort(),
     yearMin: yearMin.trim(),
     yearMax: yearMax.trim(),
+    fullscreen,
   };
 }
 
@@ -351,6 +353,16 @@ export function HomeClient({
     () => parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey)),
     [searchKey],
   );
+
+  // If returning from a detail page with `fs=1`, restore fullscreen mode immediately.
+  useEffect(() => {
+    if (!urlFilters.fullscreen) return;
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia?.("(max-width: 640px)")?.matches) return;
+    setMountMap(true);
+    didAutoFullscreenMapRef.current = true;
+    setMapAbsolute(true);
+  }, [urlFilters.fullscreen]);
 
   // Performance: until the map/list UI is mounted, skip expensive filtering/facet work.
   const selectedCategories = useMemo(() => {
@@ -491,6 +503,7 @@ export function HomeClient({
       effectiveCollections,
       yearMin,
       yearMax,
+      mapAbsolute,
     );
     const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
     if (homeFiltersFromUrlEqual(desired, parsed)) return;
@@ -503,6 +516,7 @@ export function HomeClient({
     effectiveCollections,
     yearMin,
     yearMax,
+    mapAbsolute,
     pathname,
     router,
     searchParams,
@@ -536,6 +550,14 @@ export function HomeClient({
     [pathname, router],
   );
 
+  // Ensure the URL reflects fullscreen state (so Back/Forward & share links restore it).
+  useEffect(() => {
+    if (!mountMap) return;
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    if (parsed.fullscreen === mapAbsolute) return;
+    replaceQueryWith({ ...parsed, fullscreen: mapAbsolute });
+  }, [mapAbsolute, mountMap, replaceQueryWith, searchParams]);
+
   const toggleCategory = useCallback(
     (key: string) => {
       const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
@@ -548,6 +570,7 @@ export function HomeClient({
         collections: parsed.collections,
         yearMin: yearMin.trim(),
         yearMax: yearMax.trim(),
+        fullscreen: parsed.fullscreen,
       });
     },
     [replaceQueryWith, searchParams, yearMin, yearMax],
@@ -565,6 +588,7 @@ export function HomeClient({
         collections: parsed.collections,
         yearMin: yearMin.trim(),
         yearMax: yearMax.trim(),
+        fullscreen: parsed.fullscreen,
       });
     },
     [replaceQueryWith, searchParams, yearMin, yearMax],
@@ -582,6 +606,7 @@ export function HomeClient({
         collections: [...next].sort(),
         yearMin: yearMin.trim(),
         yearMax: yearMax.trim(),
+        fullscreen: parsed.fullscreen,
       });
     },
     [replaceQueryWith, searchParams, yearMin, yearMax],
@@ -590,14 +615,16 @@ export function HomeClient({
   const clearFilters = useCallback(() => {
     setYearMin("");
     setYearMax("");
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
     replaceQueryWith({
       categories: [],
       commissions: [],
       collections: [],
       yearMin: "",
       yearMax: "",
+      fullscreen: parsed.fullscreen,
     });
-  }, [replaceQueryWith]);
+  }, [replaceQueryWith, searchParams]);
 
   const clearCategoryFacet = useCallback(() => {
     const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
@@ -607,6 +634,7 @@ export function HomeClient({
       collections: parsed.collections,
       yearMin: yearMin.trim(),
       yearMax: yearMax.trim(),
+      fullscreen: parsed.fullscreen,
     });
   }, [replaceQueryWith, searchParams, yearMin, yearMax]);
 
@@ -618,6 +646,7 @@ export function HomeClient({
       collections: parsed.collections,
       yearMin: yearMin.trim(),
       yearMax: yearMax.trim(),
+      fullscreen: parsed.fullscreen,
     });
   }, [replaceQueryWith, searchParams, yearMin, yearMax]);
 
@@ -629,6 +658,7 @@ export function HomeClient({
       collections: [],
       yearMin: yearMin.trim(),
       yearMax: yearMax.trim(),
+      fullscreen: parsed.fullscreen,
     });
   }, [replaceQueryWith, searchParams, yearMin, yearMax]);
 
@@ -668,13 +698,21 @@ export function HomeClient({
       didAutoFullscreenMapRef.current = true;
     }
     setMapAbsolute(true);
-  }, []);
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    if (!parsed.fullscreen) {
+      replaceQueryWith({ ...parsed, fullscreen: true });
+    }
+  }, [replaceQueryWith, searchParams]);
 
   const exitFullscreenMap = useCallback(() => {
     setMapAbsolute(false);
+    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    if (parsed.fullscreen) {
+      replaceQueryWith({ ...parsed, fullscreen: false });
+    }
     // Keep map mounted; just return to normal page flow.
     mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [replaceQueryWith, searchParams]);
 
   useEffect(() => {
     if (!mapAbsolute) return;
@@ -815,6 +853,10 @@ export function HomeClient({
                     if (window.matchMedia?.("(max-width: 640px)")?.matches) {
                       didAutoFullscreenMapRef.current = true;
                       setMapAbsolute(true);
+                    }
+                    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+                    if (!parsed.fullscreen) {
+                      replaceQueryWith({ ...parsed, fullscreen: true });
                     }
                   }}
                   aria-label="Load interactive map"

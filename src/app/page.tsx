@@ -20,6 +20,7 @@ const EMPTY_FILTERS: HomeFiltersFromUrl = {
   collections: [],
   yearMin: "",
   yearMax: "",
+  fullscreen: false,
 };
 
 export default async function Home() {
