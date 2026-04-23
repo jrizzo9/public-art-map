@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Home landing styles: invert to a light background with dark text; keep **Explore the map** primary button hover as a primary gradient (avoid white hover fill).
 - Home map now loads on interaction, and **Explore the map** expands the map into a full-viewport mode (scroll locked while active).
 - Home landing layout redesigned (centered intro + rounded map card) and the interactive Mapbox map is now **deferred until clicking Explore the map** (poster image shown before load for better PageSpeed).
 - Home route (`/`) now prerenders as **static** content (avoids server data fetch in the initial request path; filter state still syncs to the URL once the map UI is mounted).
@@ -109,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Map popup preview:** remove the **Embed →** link (embed routes still exist for Webflow iframes).
 - Home floating **Submit Public Art** button (submit CTA lives in the intro when enabled).
 - Home rotating featured artwork hero (replaced by a simpler intro + deferred map poster).
+- Home map poster image placeholder (replaced by a lightweight “Tap to load map” button to reduce LCP impact on mobile).
 
 ### Fixed
 

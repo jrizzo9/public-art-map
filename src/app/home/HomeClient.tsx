@@ -4,13 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Artwork } from "@/lib/sheet";
 import { markerColorForCategory } from "@/lib/category-colors";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
-import mapPoster from "../../../public/map-poster.jpg";
 import {
   type HomeFiltersFromUrl,
   homeFiltersFromUrlEqual,
@@ -803,19 +801,22 @@ export function HomeClient({
                   styleUrl={mapboxStyleUrl}
                 />
               ) : (
-                <div className={styles.mapPoster} aria-hidden>
-                  <Image
-                    src={mapPoster}
-                    alt=""
-                    fill
-                    priority
-                    fetchPriority="high"
-                    sizes="(max-width: 640px) 100vw, 1100px"
-                    className={styles.mapPosterImg}
-                    quality={70}
-                    placeholder="blur"
-                  />
-                </div>
+                <button
+                  type="button"
+                  className={styles.mapLoadBtn}
+                  onClick={() => {
+                    setMountMap(true);
+                    if (window.matchMedia?.("(max-width: 640px)")?.matches) {
+                      setMapAbsolute(true);
+                    }
+                  }}
+                  aria-label="Load interactive map"
+                >
+                  <span className={styles.mapLoadLabel}>
+                    Tap to load map
+                    <span className={styles.sub}>Interactive map loads on demand for performance.</span>
+                  </span>
+                </button>
               )}
             </div>
 
