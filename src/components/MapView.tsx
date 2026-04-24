@@ -98,6 +98,12 @@ type Props = {
   styleUrl?: string;
   /** Query string from the home page (filters + fs) to preserve context. */
   homeQueryString?: string;
+  /**
+   * When true, the `artworks` list is the entire catalog — keep the camera on a single `fitBounds`
+   * that shows every pin (panel padding), and do not `flyTo` on selection. When false (subset),
+   * selection uses `flyTo` like a narrowed search.
+   */
+  mapShowsFullCatalog?: boolean;
 };
 
 export function MapView({
@@ -108,6 +114,7 @@ export function MapView({
   onClearSelection,
   styleUrl,
   homeQueryString,
+  mapShowsFullCatalog = false,
 }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -119,6 +126,8 @@ export function MapView({
   const popupRef = useRef<MapboxPopup | null>(null);
   const ignoreNextMapClickRef = useRef(false);
   const hasFittedBoundsOnceRef = useRef(false);
+  /** When bounds change (filters), allow `fitBounds` again even if a row is selected. */
+  const lastFittedBoundsKeyRef = useRef<string>("");
   const onSelectSlugRef = useRef(onSelectSlug);
   const onClearSelectionRef = useRef(onClearSelection);
 
@@ -203,6 +212,9 @@ export function MapView({
       mapRef.current?.remove();
       mapRef.current = null;
       mapboxglRef.current = null;
+      /** New map instance must be allowed to `fitBounds` again (React Strict remount / dynamic remount). */
+      hasFittedBoundsOnceRef.current = false;
+      lastFittedBoundsKeyRef.current = "";
     };
   }, [styleUrl]);
 
@@ -260,28 +272,43 @@ export function MapView({
           Number.isFinite(a.lng),
       );
 
-    /** First frame with a share-link selection: popup effect runs `fitBounds` then `flyTo` so skip here. */
-    const deferFirstFitToPopup = slugInList && !hasFittedBoundsOnceRef.current;
-    if (deferFirstFitToPopup) return;
+    const boundsKey = JSON.stringify(bounds);
 
     /**
-     * After the first fit, a preview uses `flyTo` with `selectionFlyPadding`. Skipping further `fitBounds`
-     * avoids overriding that camera when filters change while a pin stays selected (same slug as before).
+     * Subset list: after fitting, selection uses `flyTo` — skip repeat `fitBounds` for the same bounds.
+     * Full catalog on the map: always refit so every pin stays in view (no `flyTo` in popup effect).
      */
-    const selectionDrivesCamera = hasFittedBoundsOnceRef.current && slugInList;
+    const selectionDrivesCamera =
+      !mapShowsFullCatalog &&
+      hasFittedBoundsOnceRef.current &&
+      slugInList &&
+      lastFittedBoundsKeyRef.current === boundsKey;
     if (selectionDrivesCamera) return;
 
-    const delay = hasFittedBoundsOnceRef.current ? FIT_BOUNDS_DEBOUNCE_MS : 0;
+    const delay =
+      !mapShowsFullCatalog && hasFittedBoundsOnceRef.current
+        ? FIT_BOUNDS_DEBOUNCE_MS
+        : 0;
+    const fitDuration =
+      mapShowsFullCatalog || !hasFittedBoundsOnceRef.current
+        ? 0
+        : FIT_BOUNDS_DURATION_MS;
     const runFit = () => {
       if (mapRef.current !== map) return;
       if (!map.isStyleLoaded()) return;
+      try {
+        map.resize();
+      } catch {
+        /* ignore */
+      }
       map.fitBounds(bounds, {
         padding: mapChromePadding(map),
-        duration: FIT_BOUNDS_DURATION_MS,
+        duration: fitDuration,
         maxZoom: 15,
         essential: true,
       });
       hasFittedBoundsOnceRef.current = true;
+      lastFittedBoundsKeyRef.current = boundsKey;
     };
 
     const id = window.setTimeout(() => {
@@ -294,7 +321,7 @@ export function MapView({
       window.clearTimeout(id);
       map.off("load", runFit);
     };
-  }, [bounds, selectedSlug, artworks]);
+  }, [bounds, mapReadyTick, mapShowsFullCatalog, selectedSlug, artworks]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -553,47 +580,79 @@ export function MapView({
     const narrow = map.getContainer().getBoundingClientRect().width < 640;
     const popupMaxWidth = narrow ? "min(680px, calc(100vw - 32px))" : "680px";
     const popupOuterH = measureArtworkPopupOuterHeightPx(wrap, popupMaxWidth);
-
-    if (!hasFittedBoundsOnceRef.current && bounds) {
-      map.fitBounds(bounds, {
-        padding: mapChromePadding(map),
-        duration: 0,
-        maxZoom: 15,
-        essential: true,
-      });
-      hasFittedBoundsOnceRef.current = true;
-    }
-
-    // Single flight: Mapbox places `center` at (padded focal point + offset). Positive offset.y moves the
-    // anchor down — half the popup height vertically centers the card vs. centering only the dot.
-    map.flyTo({
-      center: lngLat,
-      zoom: Math.max(map.getZoom(), 14),
-      padding: selectionFlyPadding(map),
-      retainPadding: false,
-      essential: true,
-      duration: 900,
-      curve: 1.5,
-      offset: [0, popupOuterH / 2],
-    });
-
-    // Anchor bottom = bottom edge (and tip) sits at lnglat so the card is above the dot.
-    // Negative Y offset moves the popup up (Mapbox: negative is up); keep extra lift on mobile so the dot remains visible.
     const popupOffsetY = narrow ? -68 : -18;
 
-    const popup = new mapboxgl.Popup({
-      anchor: "bottom",
-      closeButton: false,
-      closeOnClick: false,
-      maxWidth: popupMaxWidth,
-      offset: [0, popupOffsetY] as [number, number],
-    })
-      .setLngLat(lngLat)
-      .setDOMContent(wrap)
-      .addTo(map);
+    const applyCameraAndPopup = () => {
+      if (mapRef.current !== map) return;
+      if (!map.isStyleLoaded()) return;
 
-    popupRef.current = popup;
-  }, [artworks, bounds, selectedSlug, router]);
+      // Subset list: move camera to the pin. Full catalog: keep the wide `fitBounds` — popup only.
+      if (!mapShowsFullCatalog) {
+        map.flyTo({
+          center: lngLat,
+          zoom: Math.max(map.getZoom(), 14),
+          padding: selectionFlyPadding(map),
+          retainPadding: false,
+          essential: true,
+          duration: 900,
+          curve: 1.5,
+          offset: [0, popupOuterH / 2],
+        });
+      }
+
+      const popup = new mapboxgl.Popup({
+        anchor: "bottom",
+        closeButton: false,
+        closeOnClick: false,
+        maxWidth: popupMaxWidth,
+        offset: [0, popupOffsetY] as [number, number],
+      })
+        .setLngLat(lngLat)
+        .setDOMContent(wrap)
+        .addTo(map);
+
+      popupRef.current = popup;
+    };
+
+    /**
+     * Defer so `fitBounds` (same tick / `load`) can run first. `load` may already have fired before
+     * this listener is attached — use `idle` as a fallback so `flyTo` + popup still run.
+     */
+    let applied = false;
+    const tryApplyCamera = () => {
+      if (applied || mapRef.current !== map) return;
+      if (!map.isStyleLoaded()) return;
+      applied = true;
+      map.off("load", tryApplyCamera);
+      map.off("idle", tryApplyCamera);
+      applyCameraAndPopup();
+    };
+
+    const id = window.setTimeout(() => {
+      if (mapRef.current !== map) return;
+      if (map.isStyleLoaded()) tryApplyCamera();
+      else {
+        map.once("load", tryApplyCamera);
+        map.once("idle", tryApplyCamera);
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(id);
+      map.off("load", tryApplyCamera);
+      map.off("idle", tryApplyCamera);
+      popupRef.current?.remove();
+      popupRef.current = null;
+    };
+  }, [
+    artworks,
+    bounds,
+    homeQueryString,
+    mapReadyTick,
+    mapShowsFullCatalog,
+    selectedSlug,
+    router,
+  ]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

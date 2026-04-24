@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { HomeClient } from "./home/HomeClient";
 import {
+  getArtSlugFromPageSearchParams,
   parseHomeFiltersFromPageSearchParams,
   type HomeFiltersFromUrl,
 } from "./home/home-filter-url";
@@ -23,10 +24,12 @@ export default async function Home({ searchParams }: HomePageProps) {
   const mapboxStyleUrl = env.NEXT_PUBLIC_MAPBOX_STYLE_URL();
   const sp = await searchParams;
   const initialFiltersFromUrl = parseHomeFiltersFromPageSearchParams(sp);
+  const initialArtSlug = getArtSlugFromPageSearchParams(sp);
   return (
     <HomeServer
       mapboxStyleUrl={mapboxStyleUrl}
       initialFiltersFromUrl={initialFiltersFromUrl}
+      initialArtSlug={initialArtSlug}
     />
   );
 }
@@ -34,9 +37,11 @@ export default async function Home({ searchParams }: HomePageProps) {
 async function HomeServer({
   mapboxStyleUrl,
   initialFiltersFromUrl,
+  initialArtSlug,
 }: {
   mapboxStyleUrl: string;
   initialFiltersFromUrl: HomeFiltersFromUrl;
+  initialArtSlug?: string;
 }) {
   const artworks = await getArtworks();
   const submitEnabled = env.submitPublicArtEnabled();
@@ -48,6 +53,7 @@ async function HomeServer({
           mapboxStyleUrl={mapboxStyleUrl}
           submitEnabled={submitEnabled}
           initialFiltersFromUrl={initialFiltersFromUrl}
+          initialArtSlug={initialArtSlug}
         />
       </Suspense>
       <section className={styles.srOnly} aria-label="Artwork index">

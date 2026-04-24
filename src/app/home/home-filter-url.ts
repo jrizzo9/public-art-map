@@ -109,6 +109,48 @@ export function serializeHomeFiltersToQueryString(f: HomeFiltersFromUrl): string
   return p.toString();
 }
 
+/** Selected artwork slug for deep links (`?art=my-piece-slug`). */
+export function getArtSlugFromSearchParams(params: URLSearchParams): string | undefined {
+  const v = params.get("art")?.trim();
+  return v || undefined;
+}
+
+/** Server `searchParams` record (Next.js page props). */
+export function getArtSlugFromPageSearchParams(
+  sp: Record<string, string | string[] | undefined>,
+): string | undefined {
+  const raw = sp.art;
+  const v = (Array.isArray(raw) ? raw[0] : raw)?.trim();
+  return v || undefined;
+}
+
+/** Full home map query string: filters + optional `art` (canonical filter keys from `f`). */
+export function serializeHomeMapQueryString(
+  f: HomeFiltersFromUrl,
+  artSlug?: string,
+): string {
+  const base = serializeHomeFiltersToQueryString(f);
+  const p = base ? new URLSearchParams(base) : new URLSearchParams();
+  const art = artSlug?.trim();
+  if (art) p.set("art", art);
+  else p.delete("art");
+  return p.toString();
+}
+
+/** Order-independent compare for `router.replace` deduping. */
+export function homeMapQueryStringsEqual(a: string, b: string): boolean {
+  const norm = (qs: string) => {
+    const p = new URLSearchParams(qs);
+    const keys = [...new Set([...p.keys()])].sort();
+    const out = new URLSearchParams();
+    for (const k of keys) {
+      for (const v of [...p.getAll(k)].sort()) out.append(k, v);
+    }
+    return out.toString();
+  };
+  return norm(a) === norm(b);
+}
+
 export function emptyHomeFiltersFromUrl(): HomeFiltersFromUrl {
   return { ...EMPTY };
 }

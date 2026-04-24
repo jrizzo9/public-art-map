@@ -20,9 +20,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import {
   type HomeFiltersFromUrl,
-  homeFiltersFromUrlEqual,
+  homeMapQueryStringsEqual,
   parseHomeFiltersFromUrlSearchParams,
   serializeHomeFiltersToQueryString,
+  serializeHomeMapQueryString,
 } from "./home-filter-url";
 import styles from "./home.module.css";
 
@@ -32,6 +33,8 @@ type Props = {
   submitEnabled: boolean;
   /** Parsed from `searchParams` on the server — matches first client paint when using filters in the URL. */
   initialFiltersFromUrl: HomeFiltersFromUrl;
+  /** Optional `art` query param — selected artwork slug for shareable map links. */
+  initialArtSlug?: string;
 };
 
 type FacetOption = { key: string; label: string };
@@ -324,16 +327,20 @@ function initialShareLinkHasFacetsOrYear(f: HomeFiltersFromUrl): boolean {
   );
 }
 
-function shouldMountMapInitially(f: HomeFiltersFromUrl): boolean {
+function shouldMountMapInitially(
+  f: HomeFiltersFromUrl,
+  initialArt?: string,
+): boolean {
+  if (initialArt?.trim()) return true;
   return f.fullscreen || initialShareLinkHasFacetsOrYear(f);
 }
 
-/** First artwork for server-parsed share URLs (client `useSearchParams` can be empty on first paint). */
-function initialSelectedSlugFromHomeFilters(
+/** Initial row selection: optional `art` slug, else first match for server-parsed share filters. */
+function resolveInitialSelectedSlug(
   artworkList: Artwork[],
   initial: HomeFiltersFromUrl,
+  initialArt?: string,
 ): string | undefined {
-  if (!initialShareLinkHasFacetsOrYear(initial)) return undefined;
   const qs = serializeHomeFiltersToQueryString({
     categories: initial.categories,
     commissions: initial.commissions,
@@ -342,8 +349,17 @@ function initialSelectedSlugFromHomeFilters(
     yearMax: initial.yearMax,
     fullscreen: false,
   });
-  if (!qs) return undefined;
-  return filterArtworksByHomeUrlQuery(artworkList, qs)[0]?.slug;
+  const hasFacetOrYear = initialShareLinkHasFacetsOrYear(initial);
+  const filtered =
+    hasFacetOrYear && qs
+      ? filterArtworksByHomeUrlQuery(artworkList, qs)
+      : artworkList;
+  const art = initialArt?.trim();
+  if (art && filtered.some((a) => a.slug === art)) return art;
+  if (hasFacetOrYear && qs) {
+    return filterArtworksByHomeUrlQuery(artworkList, qs)[0]?.slug;
+  }
+  return undefined;
 }
 
 export function HomeClient({
@@ -351,18 +367,21 @@ export function HomeClient({
   mapboxStyleUrl,
   submitEnabled,
   initialFiltersFromUrl,
+  initialArtSlug,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(() =>
-    initialSelectedSlugFromHomeFilters(artworks, initialFiltersFromUrl),
+    resolveInitialSelectedSlug(artworks, initialFiltersFromUrl, initialArtSlug),
   );
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
   /** Mount map for `fs=1` or any shareable facet/year params from the server (see `page.tsx`). */
-  const [mountMap, setMountMap] = useState(() => shouldMountMapInitially(initialFiltersFromUrl));
+  const [mountMap, setMountMap] = useState(() =>
+    shouldMountMapInitially(initialFiltersFromUrl, initialArtSlug),
+  );
   const [mapAbsolute, setMapAbsolute] = useState(() => !!initialFiltersFromUrl.fullscreen);
   const mapSectionRef = useRef<HTMLElement | null>(null);
   const didAutoFullscreenMapRef = useRef(!!initialFiltersFromUrl.fullscreen);
@@ -411,8 +430,17 @@ export function HomeClient({
     return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(""));
   }, [searchKey, initialFiltersFromUrl]);
 
-  const mapAndLinkQueryString =
-    searchKey !== "" ? searchKey : serializeHomeFiltersToQueryString(urlFilters);
+  const filterQueryString = useMemo(() => {
+    if (searchKey !== "") return searchKey;
+    return serializeHomeFiltersToQueryString(urlFilters);
+  }, [searchKey, urlFilters]);
+
+  const mapAndLinkQueryString = useMemo(() => {
+    const p = new URLSearchParams(filterQueryString || "");
+    if (selectedSlug) p.set("art", selectedSlug);
+    else p.delete("art");
+    return p.toString();
+  }, [filterQueryString, selectedSlug]);
 
   // Apply `fs=1` before paint so a follow-up effect cannot strip it from the URL first (desktop paste / share links).
   useLayoutEffect(() => {
@@ -572,14 +600,10 @@ export function HomeClient({
       yearMax,
       mapAbsolute,
     );
-    /** Match `urlFilters` / links — raw `useSearchParams()` can be empty on first paint while the URL bar has params. */
-    const parsed = parseHomeFiltersFromUrlSearchParams(
-      new URLSearchParams(mapAndLinkQueryString || ""),
-    );
-    if (homeFiltersFromUrlEqual(desired, parsed)) return;
-    const qs = serializeHomeFiltersToQueryString(desired);
-    const next = qs ? `${pathname}?${qs}` : pathname;
-    router.replace(next, { scroll: false });
+    const nextQs = serializeHomeMapQueryString(desired, selectedSlug);
+    if (homeMapQueryStringsEqual(nextQs, mapAndLinkQueryString || "")) return;
+    const href = nextQs ? `${pathname}?${nextQs}` : pathname;
+    router.replace(href, { scroll: false });
   }, [
     effectiveCategories,
     effectiveCommissions,
@@ -590,6 +614,7 @@ export function HomeClient({
     mapAndLinkQueryString,
     pathname,
     router,
+    selectedSlug,
   ]);
 
   /** Rewrite URL when facet pruning removes impossible chip keys (and after loading an outdated share link). */
@@ -603,6 +628,12 @@ export function HomeClient({
     effectiveCollections,
     pushFilterUrl,
   ]);
+
+  /** Keep `art=` in the address bar in sync with the highlighted list row / map preview. */
+  useEffect(() => {
+    if (!mountMap) return;
+    pushFilterUrl();
+  }, [mountMap, selectedSlug, pushFilterUrl]);
 
   /** Debounce year typing so we don’t rewrite the URL on every keystroke. */
   useEffect(() => {
@@ -677,6 +708,8 @@ export function HomeClient({
   const clearFilters = useCallback(() => {
     setYearMin("");
     setYearMax("");
+    setSearchQuery("");
+    setSelectedSlug(undefined);
     const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
     replaceQueryWith({
       categories: [],
@@ -730,6 +763,23 @@ export function HomeClient({
     effectiveCollections.size +
     (yearMin.trim() !== "" || yearMax.trim() !== "" ? 1 : 0);
 
+  /** Mirrors list narrowing used for selection sync — passed to the map so it can refit when this flips false. */
+  const listRefinementActive = useMemo(
+    () =>
+      effectiveCategories.size > 0 ||
+      effectiveCommissions.size > 0 ||
+      effectiveCollections.size > 0 ||
+      yearParsed.hasYearFilter ||
+      searchQuery.trim() !== "",
+    [
+      effectiveCategories,
+      effectiveCommissions,
+      effectiveCollections,
+      yearParsed.hasYearFilter,
+      searchQuery,
+    ],
+  );
+
   /** Stable key so we only react to filter/search changes, not unrelated `filtered` identity churn. */
   const filterDriveSelectionKey = useMemo(
     () =>
@@ -766,12 +816,7 @@ export function HomeClient({
     if (!mountMap) return;
     const key = filterDriveSelectionKey;
 
-    const hasRefinements =
-      effectiveCategories.size > 0 ||
-      effectiveCommissions.size > 0 ||
-      effectiveCollections.size > 0 ||
-      yearParsed.hasYearFilter ||
-      searchQuery.trim() !== "";
+    const hasRefinements = listRefinementActive;
 
     if (skipInitialFilterSelectionSyncRef.current) {
       skipInitialFilterSelectionSyncRef.current = false;
@@ -811,11 +856,7 @@ export function HomeClient({
     filterDriveSelectionKey,
     filtered,
     selectedSlug,
-    effectiveCategories.size,
-    effectiveCommissions.size,
-    effectiveCollections.size,
-    yearParsed.hasYearFilter,
-    searchQuery,
+    listRefinementActive,
   ]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -972,6 +1013,9 @@ export function HomeClient({
                   onClearSelection={onClearSelection}
                   styleUrl={mapboxStyleUrl}
                   homeQueryString={mapAndLinkQueryString}
+                  mapShowsFullCatalog={
+                    artworks.length > 0 && filtered.length === artworks.length
+                  }
                 />
               ) : (
                 <button
@@ -1204,7 +1248,10 @@ export function HomeClient({
                     <div className={styles.listItemRow}>
                       <button
                         type="button"
-                        className={styles.item}
+                        className={`${styles.item}${
+                          selectedSlug === a.slug ? ` ${styles.itemSelected}` : ""
+                        }`}
+                        aria-pressed={selectedSlug === a.slug}
                         onClick={() => setSelectedSlug(a.slug)}
                         onMouseEnter={() => setHoveredSlug(a.slug)}
                         onMouseLeave={() => setHoveredSlug(undefined)}
@@ -1251,18 +1298,18 @@ export function HomeClient({
               </p>
             </>
           )}
-          {effectiveCollections.size === 1 ? (
-            <footer className={styles.curatedFooter}>
-              <p className={styles.curatedLine}>Curated collection by</p>
-              <div className={styles.curatedLogoWrap}>
-                <BrandLogo
-                  className={styles.curatedBrandLink}
-                  imgClassName={styles.curatedBrandImg}
-                />
-              </div>
-            </footer>
-          ) : null}
         </div>
+        {effectiveCollections.size === 1 ? (
+          <footer className={styles.curatedFooter}>
+            <p className={styles.curatedLine}>Curated collection by</p>
+            <div className={styles.curatedLogoWrap}>
+              <BrandLogo
+                className={styles.curatedBrandLink}
+                imgClassName={styles.curatedBrandImg}
+              />
+            </div>
+          </footer>
+        ) : null}
         </aside>
       ) : null}
 

@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-24
+
 ### Added
 
+- **Home map URLs:** optional **`art=<slug>`** query parameter for the **selected artwork** (parsed on the server for first paint; the address bar updates when the highlighted list row or map preview changes).
+- **`getArtSlugFromPageSearchParams`**, **`serializeHomeMapQueryString`**, and **`homeMapQueryStringsEqual`** in **`home-filter-url.ts`** to build and compare full home map query strings (filters + **`fs`** + **`art`**).
 - **Home panel:** when exactly **one collection** facet is active, a short **Curated collection by** footer with the **Creative Waco** logo appears under the list.
 - **`filterArtworksByHomeUrlQuery`** (`src/lib/home-filter-match.ts`) so **`/art/[slug]`** prev/next uses the same **facet + year** rules as the home map when the URL carries home filter query keys.
 - **Artwork detail** (‹ ›) controls to step through the **current filtered set** (query string preserved); **map popup** (‹ ›) cycles **filtered** artworks; **Details** links from the home list and popup include the home **query string** (filters + **`fs`** when present).
@@ -66,10 +70,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Home Clear filters:** also clears **search** and **map/list selection** so the UI returns to the full catalog in one step (including dropping **`art=`** from the URL when synced).
+- **Home map camera:** when the map is showing the **full catalog** (every artwork in the sheet is in the filtered list), the camera stays on a single **`fitBounds`** that keeps **all markers visible** with **list/bottom-sheet padding** and **does not `flyTo`** on row or dot selection (popup still opens). When the list is **narrowed** by filters or search, selection still **`flyTo`**s the pin with the preview popup.
+- **Home list:** subtle **background** on the **selected** row (no inset bar).
+- **Curated collection** footer: **frosted** bar and padding when a single collection facet is active.
 - **Home map selection:** when filters, year range, or search change, the map preview **follows the filtered list** (keeps the current artwork when it still matches, otherwise selects the first match, or clears when there are no refinements) instead of always clearing the selection.
-- **Shareable filter URLs** mount the interactive map when the URL includes **facet or year** parameters (not only **`fs=1`**), and **Details** / map popup links carry a **serialized home query** when the live client search string is still empty on first paint.
+- **Shareable home URLs** mount the interactive map when the URL includes **facet**, **year**, or **`art=`** parameters (not only **`fs=1`**), and **Details** / map popup links carry a **serialized home query** when the live client search string is still empty on first paint.
 - **Map popup** preview: tighter spacing between the **title** and the **meta** line (artist/year/category), **bottom-aligned** header row with the close control, and a slightly smaller close button.
-- **Map camera:** opening a selection from a **share link** fits filtered markers once, then **flies** to the artwork without a second `fitBounds` overriding the popup framing; while a selected artwork stays in the filtered set, later filter tweaks no longer **reset the camera** with `fitBounds` alone.
 - Home landing styles: invert to a light background with dark text; keep **Explore the map** primary button hover as a primary gradient (avoid white hover fill).
 - Home map now loads on interaction, and **Explore the map** expands the map into a full-viewport mode (scroll locked while active).
 - Home landing layout redesigned (centered intro + rounded map card) and the interactive Mapbox map is now **deferred until clicking Explore the map** (poster image shown before load for better PageSpeed).
@@ -123,6 +130,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Home map:** share links and filter changes **reframe the camera** reliably (reset cached **`fitBounds`** state when the map instance is torn down; popup camera waits on **`load`** and **`idle`** so the style is ready).
 - **Pasted facet/year home URLs** stay aligned on the first client render when **`useSearchParams()`** is temporarily empty by reusing the **server-parsed** filter object until the live query string is available.
 - **Facet URLs** normalize **`+`** as a space in category, commission, and collection query values so pasted links match sheet labels (e.g. `coll=sculpture+zoo` vs **Sculpture Zoo**).
 - **Fullscreen map deep links:** opening **`/?fs=1`** (or a filter URL that includes **`fs=1`**) in a new tab restores the immersive map on **desktop and mobile**, and **`fs=1` is no longer dropped** on first map mount; **Explore the map** no longer needs a second tap when the URL flag raced hydration.
