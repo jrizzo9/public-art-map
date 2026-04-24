@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Home panel:** when exactly **one collection** facet is active, a short **Curated collection by** footer with the **Creative Waco** logo appears under the list.
 - **`filterArtworksByHomeUrlQuery`** (`src/lib/home-filter-match.ts`) so **`/art/[slug]`** prev/next uses the same **facet + year** rules as the home map when the URL carries home filter query keys.
 - **Artwork detail** (‹ ›) controls to step through the **current filtered set** (query string preserved); **map popup** (‹ ›) cycles **filtered** artworks; **Details** links from the home list and popup include the home **query string** (filters + **`fs`** when present).
 - Google Sheet **`image`** cells may list **multiple https URLs** (comma/newline-separated); the parser fills **`images`** and keeps **`image`** as the first URL.
@@ -65,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Home map selection:** when filters, year range, or search change, the map preview **follows the filtered list** (keeps the current artwork when it still matches, otherwise selects the first match, or clears when there are no refinements) instead of always clearing the selection.
+- **Shareable filter URLs** mount the interactive map when the URL includes **facet or year** parameters (not only **`fs=1`**), and **Details** / map popup links carry a **serialized home query** when the live client search string is still empty on first paint.
+- **Map popup** preview: tighter spacing between the **title** and the **meta** line (artist/year/category), **bottom-aligned** header row with the close control, and a slightly smaller close button.
+- **Map camera:** opening a selection from a **share link** fits filtered markers once, then **flies** to the artwork without a second `fitBounds` overriding the popup framing; while a selected artwork stays in the filtered set, later filter tweaks no longer **reset the camera** with `fitBounds` alone.
 - Home landing styles: invert to a light background with dark text; keep **Explore the map** primary button hover as a primary gradient (avoid white hover fill).
 - Home map now loads on interaction, and **Explore the map** expands the map into a full-viewport mode (scroll locked while active).
 - Home landing layout redesigned (centered intro + rounded map card) and the interactive Mapbox map is now **deferred until clicking Explore the map** (poster image shown before load for better PageSpeed).
@@ -118,6 +123,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Pasted facet/year home URLs** stay aligned on the first client render when **`useSearchParams()`** is temporarily empty by reusing the **server-parsed** filter object until the live query string is available.
+- **Facet URLs** normalize **`+`** as a space in category, commission, and collection query values so pasted links match sheet labels (e.g. `coll=sculpture+zoo` vs **Sculpture Zoo**).
 - **Fullscreen map deep links:** opening **`/?fs=1`** (or a filter URL that includes **`fs=1`**) in a new tab restores the immersive map on **desktop and mobile**, and **`fs=1` is no longer dropped** on first map mount; **Explore the map** no longer needs a second tap when the URL flag raced hydration.
 - **Browser history:** leaving **`fs=1`** via Back/Forward exits immersive map mode without an extra control press.
 - Mobile fullscreen map: prevent “Exit map” from immediately re-entering fullscreen, and adjust button placement so it doesn’t overlap map UI.
@@ -128,7 +135,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document required `NEXT_PUBLIC_MAPBOX_TOKEN` env var on Vercel to avoid client-side Mapbox GL initialization errors (“This page couldn’t load”).
 - **Mobile map popup:** move the popup card further upward so the marker dot stays visible beneath it.
 - **Map selection `flyTo`:** measure themed popup height off-DOM (plus tail slack) and use a **single smooth `flyTo`** with a vertical **`offset`** so the **popup card** (not just the marker) lands centered within the padded map chrome after selection.
-- Clear home **selection when filters change** so the popup does not stay open for an artwork hidden by the new filter set.
 - Mobile artwork popup uses a **bottom** anchor and upward offset so the tip sits **above** the marker and points **down** at it (not through the dot).
 - Selection **flies straight** to the artwork (no intermediate refit-to-all-markers) and marker clicks stay selected (map background click no longer clears selection in the same gesture).
 - Fix production build failure caused by duplicate route definitions (removed legacy `/(site)` route group).

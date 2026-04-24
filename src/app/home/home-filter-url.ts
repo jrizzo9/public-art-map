@@ -24,13 +24,21 @@ const EMPTY: HomeFiltersFromUrl = {
   fullscreen: false,
 };
 
+/**
+ * Facet keys in URLs are lowercased; `+` in query strings often means space but Next.js `searchParams`
+ * can leave it as a literal plus — normalize so `coll=sculpture+zoo` matches sheet value "Sculpture Zoo".
+ */
+export function normalizeHomeFacetToken(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\+/g, " ");
+}
+
 function splitKeys(raw: string | string[] | undefined): string[] {
   if (raw == null) return [];
   const out = new Set<string>();
   const parts = Array.isArray(raw) ? raw : [raw];
   for (const p of parts) {
     for (const segment of String(p).split(",")) {
-      const t = segment.trim().toLowerCase();
+      const t = normalizeHomeFacetToken(segment);
       if (t) out.add(t);
     }
   }
@@ -56,9 +64,9 @@ export function parseHomeFiltersFromUrlSearchParams(
   params: URLSearchParams,
 ): HomeFiltersFromUrl {
   return {
-    categories: [...new Set(params.getAll("cat").map((s) => s.trim().toLowerCase()).filter(Boolean))],
-    commissions: [...new Set(params.getAll("comm").map((s) => s.trim().toLowerCase()).filter(Boolean))],
-    collections: [...new Set(params.getAll("coll").map((s) => s.trim().toLowerCase()).filter(Boolean))],
+    categories: [...new Set(params.getAll("cat").map(normalizeHomeFacetToken).filter(Boolean))],
+    commissions: [...new Set(params.getAll("comm").map(normalizeHomeFacetToken).filter(Boolean))],
+    collections: [...new Set(params.getAll("coll").map(normalizeHomeFacetToken).filter(Boolean))],
     yearMin: params.get("ymin")?.trim() ?? "",
     yearMax: params.get("ymax")?.trim() ?? "",
     fullscreen: params.get("fs") === "1" || params.get("fs") === "true",

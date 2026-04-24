@@ -128,7 +128,9 @@ export function MapView({
   }, [onSelectSlug, onClearSelection]);
 
   const bounds = useMemo(() => {
-    const coords = artworks.map((a) => [a.lng, a.lat] as const);
+    const coords = artworks
+      .filter((a) => Number.isFinite(a.lat) && Number.isFinite(a.lng))
+      .map((a) => [a.lng, a.lat] as const);
     if (coords.length === 0) return null;
     const lons = coords.map((c) => c[0]);
     const lats = coords.map((c) => c[1]);
@@ -249,8 +251,30 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !bounds) return;
 
+    const slugInList =
+      !!selectedSlug &&
+      artworks.some(
+        (a) =>
+          a.slug === selectedSlug &&
+          Number.isFinite(a.lat) &&
+          Number.isFinite(a.lng),
+      );
+
+    /** First frame with a share-link selection: popup effect runs `fitBounds` then `flyTo` so skip here. */
+    const deferFirstFitToPopup = slugInList && !hasFittedBoundsOnceRef.current;
+    if (deferFirstFitToPopup) return;
+
+    /**
+     * After the first fit, a preview uses `flyTo` with `selectionFlyPadding`. Skipping further `fitBounds`
+     * avoids overriding that camera when filters change while a pin stays selected (same slug as before).
+     */
+    const selectionDrivesCamera = hasFittedBoundsOnceRef.current && slugInList;
+    if (selectionDrivesCamera) return;
+
     const delay = hasFittedBoundsOnceRef.current ? FIT_BOUNDS_DEBOUNCE_MS : 0;
-    const id = window.setTimeout(() => {
+    const runFit = () => {
+      if (mapRef.current !== map) return;
+      if (!map.isStyleLoaded()) return;
       map.fitBounds(bounds, {
         padding: mapChromePadding(map),
         duration: FIT_BOUNDS_DURATION_MS,
@@ -258,10 +282,19 @@ export function MapView({
         essential: true,
       });
       hasFittedBoundsOnceRef.current = true;
+    };
+
+    const id = window.setTimeout(() => {
+      if (mapRef.current !== map) return;
+      if (map.isStyleLoaded()) runFit();
+      else map.once("load", runFit);
     }, delay);
 
-    return () => window.clearTimeout(id);
-  }, [bounds]);
+    return () => {
+      window.clearTimeout(id);
+      map.off("load", runFit);
+    };
+  }, [bounds, selectedSlug, artworks]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -521,6 +554,16 @@ export function MapView({
     const popupMaxWidth = narrow ? "min(680px, calc(100vw - 32px))" : "680px";
     const popupOuterH = measureArtworkPopupOuterHeightPx(wrap, popupMaxWidth);
 
+    if (!hasFittedBoundsOnceRef.current && bounds) {
+      map.fitBounds(bounds, {
+        padding: mapChromePadding(map),
+        duration: 0,
+        maxZoom: 15,
+        essential: true,
+      });
+      hasFittedBoundsOnceRef.current = true;
+    }
+
     // Single flight: Mapbox places `center` at (padded focal point + offset). Positive offset.y moves the
     // anchor down — half the popup height vertically centers the card vs. centering only the dot.
     map.flyTo({
@@ -550,7 +593,7 @@ export function MapView({
       .addTo(map);
 
     popupRef.current = popup;
-  }, [artworks, selectedSlug, router]);
+  }, [artworks, bounds, selectedSlug, router]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

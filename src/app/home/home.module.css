@@ -699,6 +699,38 @@
   color: var(--muted-foreground);
 }
 
+.curatedFooter {
+  margin-top: 8px;
+  padding: 12px 2px 4px;
+  border-top: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+}
+
+.curatedLine {
+  margin: 0;
+  font-size: var(--panel-caption-size);
+  font-weight: 600;
+  color: var(--panel-fg);
+  line-height: 1.35;
+}
+
+.curatedLogoWrap {
+  margin-top: 8px;
+  max-width: 148px;
+}
+
+.curatedBrandLink {
+  display: block;
+  line-height: 0;
+}
+
+.curatedBrandImg {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 40px;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .ul {
   list-style: none;
   padding: 0;

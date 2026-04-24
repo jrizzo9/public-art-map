@@ -14,7 +14,9 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Artwork } from "@/lib/sheet";
+import { filterArtworksByHomeUrlQuery } from "@/lib/home-filter-match";
 import { markerColorForCategory } from "@/lib/category-colors";
+import { BrandLogo } from "@/components/BrandLogo";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import {
   type HomeFiltersFromUrl,
@@ -312,6 +314,38 @@ function filtersFromEffectiveAndYear(
   };
 }
 
+function initialShareLinkHasFacetsOrYear(f: HomeFiltersFromUrl): boolean {
+  return (
+    f.categories.length > 0 ||
+    f.commissions.length > 0 ||
+    f.collections.length > 0 ||
+    f.yearMin.trim() !== "" ||
+    f.yearMax.trim() !== ""
+  );
+}
+
+function shouldMountMapInitially(f: HomeFiltersFromUrl): boolean {
+  return f.fullscreen || initialShareLinkHasFacetsOrYear(f);
+}
+
+/** First artwork for server-parsed share URLs (client `useSearchParams` can be empty on first paint). */
+function initialSelectedSlugFromHomeFilters(
+  artworkList: Artwork[],
+  initial: HomeFiltersFromUrl,
+): string | undefined {
+  if (!initialShareLinkHasFacetsOrYear(initial)) return undefined;
+  const qs = serializeHomeFiltersToQueryString({
+    categories: initial.categories,
+    commissions: initial.commissions,
+    collections: initial.collections,
+    yearMin: initial.yearMin,
+    yearMax: initial.yearMax,
+    fullscreen: false,
+  });
+  if (!qs) return undefined;
+  return filterArtworksByHomeUrlQuery(artworkList, qs)[0]?.slug;
+}
+
 export function HomeClient({
   artworks,
   mapboxStyleUrl,
@@ -322,11 +356,13 @@ export function HomeClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
+  const [selectedSlug, setSelectedSlug] = useState<string | undefined>(() =>
+    initialSelectedSlugFromHomeFilters(artworks, initialFiltersFromUrl),
+  );
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  /** Deep link `/?fs=1` (and facet params) should match server parse on first paint — see `page.tsx`. */
-  const [mountMap, setMountMap] = useState(() => !!initialFiltersFromUrl.fullscreen);
+  /** Mount map for `fs=1` or any shareable facet/year params from the server (see `page.tsx`). */
+  const [mountMap, setMountMap] = useState(() => shouldMountMapInitially(initialFiltersFromUrl));
   const [mapAbsolute, setMapAbsolute] = useState(() => !!initialFiltersFromUrl.fullscreen);
   const mapSectionRef = useRef<HTMLElement | null>(null);
   const didAutoFullscreenMapRef = useRef(!!initialFiltersFromUrl.fullscreen);
@@ -357,12 +393,26 @@ export function HomeClient({
     }
   }, [mountMap, mapAbsolute]);
 
-  /** Facet chips follow the query string so Back/Forward and shared URLs stay in sync. */
+  /**
+   * Facet chips follow the query string. On the first client render `useSearchParams()` can be empty
+   * while the server already parsed `initialFiltersFromUrl` — merge so pasted share links hydrate correctly.
+   */
   const searchKey = searchParams.toString();
-  const urlFilters = useMemo(
-    () => parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey)),
-    [searchKey],
-  );
+  const urlFilters = useMemo((): HomeFiltersFromUrl => {
+    if (searchKey !== "") {
+      return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey));
+    }
+    if (
+      initialShareLinkHasFacetsOrYear(initialFiltersFromUrl) ||
+      initialFiltersFromUrl.fullscreen
+    ) {
+      return initialFiltersFromUrl;
+    }
+    return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(""));
+  }, [searchKey, initialFiltersFromUrl]);
+
+  const mapAndLinkQueryString =
+    searchKey !== "" ? searchKey : serializeHomeFiltersToQueryString(urlFilters);
 
   // Apply `fs=1` before paint so a follow-up effect cannot strip it from the URL first (desktop paste / share links).
   useLayoutEffect(() => {
@@ -374,13 +424,12 @@ export function HomeClient({
 
   // When history removes `fs` (Back/Forward), leave immersive map mode without requiring another click.
   useEffect(() => {
-    const parsed = parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey));
     const hadFs = hadFullscreenInUrlRef.current;
-    hadFullscreenInUrlRef.current = parsed.fullscreen;
-    if (hadFs && !parsed.fullscreen && mapAbsolute) {
+    hadFullscreenInUrlRef.current = urlFilters.fullscreen;
+    if (hadFs && !urlFilters.fullscreen && mapAbsolute) {
       setMapAbsolute(false);
     }
-  }, [searchKey, mapAbsolute]);
+  }, [urlFilters.fullscreen, mapAbsolute]);
 
   // Performance: until the map/list UI is mounted, skip expensive filtering/facet work.
   const selectedCategories = useMemo(() => {
@@ -511,7 +560,7 @@ export function HomeClient({
     if (!mountMap) return;
     setYearMin(urlFilters.yearMin);
     setYearMax(urlFilters.yearMax);
-  }, [mountMap, searchKey, urlFilters.yearMin, urlFilters.yearMax]);
+  }, [mountMap, urlFilters.yearMin, urlFilters.yearMax]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const pushFilterUrl = useCallback(() => {
@@ -523,7 +572,10 @@ export function HomeClient({
       yearMax,
       mapAbsolute,
     );
-    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
+    /** Match `urlFilters` / links — raw `useSearchParams()` can be empty on first paint while the URL bar has params. */
+    const parsed = parseHomeFiltersFromUrlSearchParams(
+      new URLSearchParams(mapAndLinkQueryString || ""),
+    );
     if (homeFiltersFromUrlEqual(desired, parsed)) return;
     const qs = serializeHomeFiltersToQueryString(desired);
     const next = qs ? `${pathname}?${qs}` : pathname;
@@ -535,9 +587,9 @@ export function HomeClient({
     yearMin,
     yearMax,
     mapAbsolute,
+    mapAndLinkQueryString,
     pathname,
     router,
-    searchParams,
   ]);
 
   /** Rewrite URL when facet pruning removes impossible chip keys (and after loading an outdated share link). */
@@ -678,6 +730,27 @@ export function HomeClient({
     effectiveCollections.size +
     (yearMin.trim() !== "" || yearMax.trim() !== "" ? 1 : 0);
 
+  /** Stable key so we only react to filter/search changes, not unrelated `filtered` identity churn. */
+  const filterDriveSelectionKey = useMemo(
+    () =>
+      JSON.stringify({
+        cats: [...effectiveCategories].sort(),
+        comms: [...effectiveCommissions].sort(),
+        colls: [...effectiveCollections].sort(),
+        ymin: yearMin.trim(),
+        ymax: yearMax.trim(),
+        q: searchQuery.trim(),
+      }),
+    [
+      effectiveCategories,
+      effectiveCommissions,
+      effectiveCollections,
+      yearMin,
+      yearMax,
+      searchQuery,
+    ],
+  );
+
   const onSelectArtwork = useCallback((slug: string) => {
     setSelectedSlug(slug);
   }, []);
@@ -686,20 +759,65 @@ export function HomeClient({
     setSelectedSlug(undefined);
   }, []);
 
-  const skipClearSelectionOnMountRef = useRef(true);
+  const skipInitialFilterSelectionSyncRef = useRef(true);
+  const prevFilterDriveKeyRef = useRef<string | null>(null);
+  /* eslint-disable react-hooks/set-state-in-effect -- Map preview follows filter / year / search; same-key pass fixes URL loads where selection was never set. */
   useEffect(() => {
-    if (skipClearSelectionOnMountRef.current) {
-      skipClearSelectionOnMountRef.current = false;
+    if (!mountMap) return;
+    const key = filterDriveSelectionKey;
+
+    const hasRefinements =
+      effectiveCategories.size > 0 ||
+      effectiveCommissions.size > 0 ||
+      effectiveCollections.size > 0 ||
+      yearParsed.hasYearFilter ||
+      searchQuery.trim() !== "";
+
+    if (skipInitialFilterSelectionSyncRef.current) {
+      skipInitialFilterSelectionSyncRef.current = false;
+      prevFilterDriveKeyRef.current = key;
+      if (hasRefinements && filtered.length > 0) {
+        const inList =
+          selectedSlug != null && filtered.some((a) => a.slug === selectedSlug);
+        if (!inList) {
+          setSelectedSlug(filtered[0]!.slug);
+        }
+      }
       return;
     }
-    setSelectedSlug(undefined);
+
+    if (!hasRefinements) {
+      if (prevFilterDriveKeyRef.current !== key) {
+        prevFilterDriveKeyRef.current = key;
+        setSelectedSlug(undefined);
+      }
+      return;
+    }
+
+    if (prevFilterDriveKeyRef.current === key) {
+      const inList =
+        selectedSlug != null && filtered.some((a) => a.slug === selectedSlug);
+      if (!inList && filtered.length > 0) {
+        setSelectedSlug(filtered[0]!.slug);
+      }
+      return;
+    }
+
+    prevFilterDriveKeyRef.current = key;
+    const first = filtered[0];
+    setSelectedSlug(first ? first.slug : undefined);
   }, [
-    effectiveCategories,
-    effectiveCommissions,
-    effectiveCollections,
-    yearMin,
-    yearMax,
+    mountMap,
+    filterDriveSelectionKey,
+    filtered,
+    selectedSlug,
+    effectiveCategories.size,
+    effectiveCommissions.size,
+    effectiveCollections.size,
+    yearParsed.hasYearFilter,
+    searchQuery,
   ]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const scrollToMap = useCallback(() => {
     mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -853,7 +971,7 @@ export function HomeClient({
                   onSelectSlug={onSelectArtwork}
                   onClearSelection={onClearSelection}
                   styleUrl={mapboxStyleUrl}
-                  homeQueryString={searchKey}
+                  homeQueryString={mapAndLinkQueryString}
                 />
               ) : (
                 <button
@@ -1114,7 +1232,9 @@ export function HomeClient({
                         </span>
                       </button>
                       <Link
-                        href={`/art/${a.slug}${searchKey ? `?${searchKey}` : ""}`}
+                        href={`/art/${a.slug}${
+                          mapAndLinkQueryString ? `?${mapAndLinkQueryString}` : ""
+                        }`}
                         className={styles.detailLink}
                         prefetch={false}
                         transitionTypes={["nav-forward"]}
@@ -1131,6 +1251,17 @@ export function HomeClient({
               </p>
             </>
           )}
+          {effectiveCollections.size === 1 ? (
+            <footer className={styles.curatedFooter}>
+              <p className={styles.curatedLine}>Curated collection by</p>
+              <div className={styles.curatedLogoWrap}>
+                <BrandLogo
+                  className={styles.curatedBrandLink}
+                  imgClassName={styles.curatedBrandImg}
+                />
+              </div>
+            </footer>
+          ) : null}
         </div>
         </aside>
       ) : null}
