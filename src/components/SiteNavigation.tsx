@@ -18,7 +18,7 @@ export function SiteNavigation() {
     (pathname.startsWith("/art/") && !pathname.startsWith("/embed"));
 
   const links: { href: string; label: string; active: boolean }[] = [
-    { href: "/", label: "Map", active: pathname === "/" },
+    { href: "/?fs=1", label: "Map", active: pathname === "/" },
     { href: "/art", label: "Art", active: artActive },
     ...(SUBMIT_ENABLED
       ? [{ href: "/submit", label: "Submit", active: startsWith("/submit", pathname) }]

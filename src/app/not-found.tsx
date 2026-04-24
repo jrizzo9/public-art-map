@@ -11,7 +11,7 @@ export default function NotFound() {
           That artwork or page does not exist.
         </p>
         <Link
-          href="/"
+          href="/?fs=1"
           className="mt-6 inline-block font-medium text-primary underline underline-offset-4 hover:opacity-90"
           transitionTypes={["nav-back"]}
         >

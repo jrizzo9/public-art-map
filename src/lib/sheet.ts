@@ -8,7 +8,10 @@ export type Artwork = {
   lat: number;
   lng: number;
   description?: string;
+  /** Back-compat: first image URL (if any). Prefer `images` for UI. */
   image?: string;
+  /** One or more image URLs (supports comma/newline separated values in the sheet). */
+  images?: string[];
   address?: string;
   category?: string;
   /** Link from the sheet `URL` column (external page). */
@@ -29,12 +32,9 @@ const rawArtworkSchema = z.object({
   lat: z.coerce.number().finite().min(-90).max(90),
   lng: z.coerce.number().finite().min(-180).max(180),
   description: z.string().optional(),
-  image: z
-    .string()
-    .url()
-    .optional()
-    .or(z.literal(""))
-    .transform((v) => (v ? v : undefined)),
+  // Accept either a single URL or multiple URLs separated by commas/newlines.
+  // We validate/sanitize into `images` after parsing.
+  image: z.string().optional().or(z.literal("")).transform((v) => (v ? v : undefined)),
   address: z.string().optional(),
   category: z.string().optional(),
   externalUrl: z
@@ -86,8 +86,7 @@ function pickFirst(row: Record<string, unknown>, keys: string[]): unknown {
 function resolveImageField(row: Record<string, unknown>): unknown {
   const direct = pickFirst(row, ["image", "image_url", "photo", "photo_url"]);
   if (typeof direct === "string" && direct.trim()) {
-    const t = direct.trim();
-    if (t.startsWith("http://") || t.startsWith("https://")) return t;
+    return direct.trim();
   }
 
   const imageId = pickFirst(row, ["image_id", "imageid"]);
@@ -97,6 +96,29 @@ function resolveImageField(row: Record<string, unknown>): unknown {
     return template.replace(/\{id\}/g, id);
   }
   return undefined;
+}
+
+function parseImageUrls(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const parts = raw
+    .split(/[\n,|]+/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const p of parts) {
+    if (!/^https?:\/\//i.test(p)) continue;
+    try {
+      const u = new URL(p);
+      const href = u.toString();
+      if (seen.has(href)) continue;
+      seen.add(href);
+      out.push(href);
+    } catch {
+      // ignore invalid segments
+    }
+  }
+  return out;
 }
 
 function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, unknown> {
@@ -249,7 +271,12 @@ export async function getArtworks(): Promise<Artwork[]> {
     const maybe = rawArtworkSchema.safeParse(coerced);
     if (!maybe.success) continue;
      usedSlugs.add(maybe.data.slug);
-    results.push(maybe.data);
+    const images = parseImageUrls(maybe.data.image);
+    results.push({
+      ...maybe.data,
+      images: images.length ? images : undefined,
+      image: images[0] ?? undefined,
+    });
   }
 
   results.sort((a, b) => a.title.localeCompare(b.title));

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { HomeClient } from "./home/HomeClient";
-import type { HomeFiltersFromUrl } from "./home/home-filter-url";
+import {
+  parseHomeFiltersFromPageSearchParams,
+  type HomeFiltersFromUrl,
+} from "./home/home-filter-url";
 import { env } from "@/lib/env";
 import { getArtworks } from "@/lib/sheet";
 import styles from "./home/home.module.css";
@@ -12,23 +15,18 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-static";
-
-const EMPTY_FILTERS: HomeFiltersFromUrl = {
-  categories: [],
-  commissions: [],
-  collections: [],
-  yearMin: "",
-  yearMax: "",
-  fullscreen: false,
+type HomePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function Home() {
+export default async function Home({ searchParams }: HomePageProps) {
   const mapboxStyleUrl = env.NEXT_PUBLIC_MAPBOX_STYLE_URL();
+  const sp = await searchParams;
+  const initialFiltersFromUrl = parseHomeFiltersFromPageSearchParams(sp);
   return (
     <HomeServer
       mapboxStyleUrl={mapboxStyleUrl}
-      initialFiltersFromUrl={EMPTY_FILTERS}
+      initialFiltersFromUrl={initialFiltersFromUrl}
     />
   );
 }

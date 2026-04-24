@@ -61,6 +61,50 @@
   object-position: center;
 }
 
+.carousel {
+  position: absolute;
+  inset: 0;
+}
+
+.artNavBtn {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  color: color-mix(in oklch, var(--foreground) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.artNavBtn:hover {
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.artNavBtn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent),
+    var(--shadow-md);
+}
+
+.artNavLeft {
+  left: 10px;
+}
+
+.artNavRight {
+  right: 10px;
+}
+
 .imagePlaceholder {
   position: absolute;
   inset: 0;

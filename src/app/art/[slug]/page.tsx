@@ -12,9 +12,11 @@ import shellStyles from "../art-detail-shell.module.css";
 import nearbyStyles from "../nearby-art.module.css";
 import Image from "next/image";
 import { SITE_ORG_NAME, SITE_PRODUCT_NAME } from "@/lib/site";
+import { filterArtworksByHomeUrlQuery } from "@/lib/home-filter-match";
 
 type Props = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -49,11 +51,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ArtPage({ params }: Props) {
+export default async function ArtPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const sp = await searchParams;
   const artworks = await getArtworks();
   const artwork = artworks.find((a) => a.slug === slug) ?? null;
   if (!artwork) notFound();
+
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (v == null) continue;
+    if (Array.isArray(v)) for (const item of v) qs.append(k, String(item));
+    else qs.set(k, String(v));
+  }
+
+  const filtered = filterArtworksByHomeUrlQuery(artworks, qs);
+
+  const pool = filtered.some((a) => a.slug === artwork.slug) ? filtered : artworks;
+  const idx = Math.max(0, pool.findIndex((a) => a.slug === artwork.slug));
+  const prev = pool[(idx - 1 + pool.length) % pool.length];
+  const next = pool[(idx + 1) % pool.length];
+  const queryString = qs.toString();
+  const prevHref = prev ? `/art/${prev.slug}${queryString ? `?${queryString}` : ""}` : undefined;
+  const nextHref = next ? `/art/${next.slug}${queryString ? `?${queryString}` : ""}` : undefined;
 
   const siteUrl = env.NEXT_PUBLIC_SITE_URL();
   const canonicalUrl = new URL(`/art/${artwork.slug}`, siteUrl).toString();
@@ -132,7 +152,7 @@ export default async function ArtPage({ params }: Props) {
       <main className={shellStyles.panel}>
         <header className={shellStyles.backRow}>
           <Link
-            href="/"
+            href="/?fs=1"
             className={shellStyles.backLink}
             transitionTypes={["nav-back"]}
           >
@@ -154,7 +174,7 @@ export default async function ArtPage({ params }: Props) {
           default="none"
         >
           <div className={shellStyles.panelInner}>
-            <ArtworkDetail artwork={artwork} variant="panel" />
+            <ArtworkDetail artwork={artwork} variant="panel" prevHref={prevHref} nextHref={nextHref} />
           </div>
         </ViewTransition>
       </main>

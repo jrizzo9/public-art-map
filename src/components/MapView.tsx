@@ -96,6 +96,8 @@ type Props = {
   onSelectSlug?: (slug: string) => void;
   onClearSelection?: () => void;
   styleUrl?: string;
+  /** Query string from the home page (filters + fs) to preserve context. */
+  homeQueryString?: string;
 };
 
 export function MapView({
@@ -105,6 +107,7 @@ export function MapView({
   onSelectSlug,
   onClearSelection,
   styleUrl,
+  homeQueryString,
 }: Props) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -411,13 +414,19 @@ export function MapView({
         .join(", ") || art.category || "Artwork";
     wrap.appendChild(meta);
 
-    if (art.image) {
+    const primaryImage = art.image ?? art.images?.[0];
+    if (primaryImage) {
+      const frame = document.createElement("div");
+      frame.className = popupStyles.imageFrame;
+
       const img = document.createElement("img");
-      img.src = art.image;
+      img.src = primaryImage;
       img.alt = art.title;
       img.loading = "lazy";
       img.className = popupStyles.image;
-      wrap.appendChild(img);
+
+      frame.appendChild(img);
+      wrap.appendChild(frame);
     } else {
       const ph = document.createElement("div");
       ph.className = popupStyles.imagePlaceholder;
@@ -435,7 +444,9 @@ export function MapView({
     links.className = popupStyles.links;
 
     const details = document.createElement("a");
-    details.href = `/art/${art.slug}`;
+    const qs = homeQueryString ? homeQueryString.replace(/^\?/, "") : "";
+    const detailHref = qs ? `/art/${art.slug}?${qs}` : `/art/${art.slug}`;
+    details.href = detailHref;
     details.textContent = "Details →";
     details.className = popupStyles.link;
     details.addEventListener("click", (e) => {
@@ -450,7 +461,7 @@ export function MapView({
         return;
       }
       e.preventDefault();
-      router.push(`/art/${art.slug}`, {
+      router.push(detailHref, {
         transitionTypes: ["nav-forward"],
       });
     });
@@ -469,6 +480,42 @@ export function MapView({
     }
 
     wrap.appendChild(links);
+
+    // Artwork cycling: prev/next within the currently-filtered artworks list.
+    if (artworks.length > 1) {
+      const idx = Math.max(
+        0,
+        artworks.findIndex((a) => a.slug === art.slug),
+      );
+      const prevSlug = artworks[(idx - 1 + artworks.length) % artworks.length]?.slug;
+      const nextSlug = artworks[(idx + 1) % artworks.length]?.slug;
+
+      if (prevSlug && nextSlug) {
+        const prevArt = document.createElement("button");
+        prevArt.type = "button";
+        prevArt.className = `${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnLeft}`;
+        prevArt.setAttribute("aria-label", "Previous artwork");
+        prevArt.textContent = "‹";
+        prevArt.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelectSlugRef.current?.(prevSlug);
+        });
+
+        const nextArt = document.createElement("button");
+        nextArt.type = "button";
+        nextArt.className = `${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnRight}`;
+        nextArt.setAttribute("aria-label", "Next artwork");
+        nextArt.textContent = "›";
+        nextArt.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelectSlugRef.current?.(nextSlug);
+        });
+
+        // Attach to the popup root so it works whether we show a photo or placeholder.
+        wrap.appendChild(prevArt);
+        wrap.appendChild(nextArt);
+      }
+    }
 
     const narrow = map.getContainer().getBoundingClientRect().width < 640;
     const popupMaxWidth = narrow ? "min(680px, calc(100vw - 32px))" : "680px";

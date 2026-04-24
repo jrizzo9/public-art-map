@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`filterArtworksByHomeUrlQuery`** (`src/lib/home-filter-match.ts`) so **`/art/[slug]`** prev/next uses the same **facet + year** rules as the home map when the URL carries home filter query keys.
+- **Artwork detail** (‹ ›) controls to step through the **current filtered set** (query string preserved); **map popup** (‹ ›) cycles **filtered** artworks; **Details** links from the home list and popup include the home **query string** (filters + **`fs`** when present).
+- Google Sheet **`image`** cells may list **multiple https URLs** (comma/newline-separated); the parser fills **`images`** and keeps **`image`** as the first URL.
 - Home hero section (headline + description + CTAs) above the interactive map.
 - `pnpm psi` script (`scripts/psi.mjs`) to run PageSpeed Insights from the terminal.
 - Home panel search input (refines the map + list).
@@ -65,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Home landing styles: invert to a light background with dark text; keep **Explore the map** primary button hover as a primary gradient (avoid white hover fill).
 - Home map now loads on interaction, and **Explore the map** expands the map into a full-viewport mode (scroll locked while active).
 - Home landing layout redesigned (centered intro + rounded map card) and the interactive Mapbox map is now **deferred until clicking Explore the map** (poster image shown before load for better PageSpeed).
-- Home route (`/`) now prerenders as **static** content (avoids server data fetch in the initial request path; filter state still syncs to the URL once the map UI is mounted).
+- Home route (`/`) is **server-rendered with `searchParams`** so the first response matches **shareable filter URLs** and **`/?fs=1`** deep links (replacing a single static shell for `/`).
+- **← Map** / site **Map** nav / **404** / embed header link to **`/?fs=1`** so returning from detail lands in the same immersive map entry point.
 - Desktop/tablet now auto-mounts the interactive map; mobile keeps click-to-load and enters fullscreen map layout after mounting.
 - Home background updated to a site-wide dark gradient, with a subtle map-card glow.
 - Home landing background includes a subtle **lighter top wash** so the fixed logo bar stays readable.
@@ -114,6 +118,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fullscreen map deep links:** opening **`/?fs=1`** (or a filter URL that includes **`fs=1`**) in a new tab restores the immersive map on **desktop and mobile**, and **`fs=1` is no longer dropped** on first map mount; **Explore the map** no longer needs a second tap when the URL flag raced hydration.
+- **Browser history:** leaving **`fs=1`** via Back/Forward exits immersive map mode without an extra control press.
 - Mobile fullscreen map: prevent “Exit map” from immediately re-entering fullscreen, and adjust button placement so it doesn’t overlap map UI.
 - Map dots are clickable reliably by attaching the Mapbox layer click handler after the layer is added (and after style reloads).
 - Cloudinary **signed upload** parameters for browser-direct `image/upload` and server `raw`/`image` uploads align with Cloudinary’s signature verification (omit `resource_type` from the signed parameter set for those endpoints).

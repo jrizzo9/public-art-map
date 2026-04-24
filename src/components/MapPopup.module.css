@@ -54,6 +54,83 @@
   border: 1px solid var(--border);
 }
 
+.imageFrame {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  margin-top: 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.imageFrame .image {
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  height: 100%;
+}
+
+.imageNavBtn {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  color: var(--foreground);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.imageNavBtn:hover {
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.imageNavBtnLeft {
+  left: 8px;
+}
+
+.imageNavBtnRight {
+  right: 8px;
+}
+
+.artworkNavBtn {
+  position: absolute;
+  top: 210px;
+  translate: 0 -50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  color: var(--foreground);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 2;
+}
+
+.artworkNavBtn:hover {
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+}
+
+.artworkNavBtnLeft {
+  left: 8px;
+}
+
+.artworkNavBtnRight {
+  right: 8px;
+}
+
 .imagePlaceholder {
   display: flex;
   align-items: center;
@@ -72,6 +149,7 @@
 
 @media (max-width: 420px) {
   .image,
+  .imageFrame,
   .imagePlaceholder {
     height: 200px;
   }

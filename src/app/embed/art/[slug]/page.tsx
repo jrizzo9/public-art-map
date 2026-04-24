@@ -34,7 +34,7 @@ export default async function EmbedArtPage({ params }: Props) {
     <main className="p-3 md:p-4">
       <header className="mb-4 border-b border-border pb-3">
         <Link
-          href="/"
+          href="/?fs=1"
           className="text-sm font-semibold tracking-tight text-foreground underline-offset-4 hover:underline"
         >
           {SITE_PRODUCT_NAME}

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Artwork } from "@/lib/sheet";
 import styles from "./ArtworkDetail.module.css";
 
@@ -6,9 +7,13 @@ type Props = {
   artwork: Artwork;
   /** panel: sits inside floating glass chrome (matches map list panel treatment) */
   variant?: "full" | "embed" | "panel";
+  prevHref?: string;
+  nextHref?: string;
 };
 
-export function ArtworkDetail({ artwork, variant = "full" }: Props) {
+export function ArtworkDetail({ artwork, variant = "full", prevHref, nextHref }: Props) {
+  const primaryImage = artwork.image ?? artwork.images?.[0];
+
   return (
     <article className={styles.card} data-variant={variant}>
       <header className={styles.header}>
@@ -21,9 +26,9 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
       </header>
 
       <div className={styles.imageWrap}>
-        {artwork.image ? (
+        {primaryImage ? (
           <Image
-            src={artwork.image}
+            src={primaryImage}
             alt={artwork.title}
             fill
             sizes="(max-width: 900px) 100vw, 720px"
@@ -40,6 +45,27 @@ export function ArtworkDetail({ artwork, variant = "full" }: Props) {
             </span>
           </div>
         )}
+
+        {variant !== "embed" && prevHref && nextHref ? (
+          <>
+            <Link
+              className={`${styles.artNavBtn} ${styles.artNavLeft}`}
+              href={prevHref}
+              aria-label="Previous artwork"
+              transitionTypes={["nav-forward"]}
+            >
+              <span aria-hidden>‹</span>
+            </Link>
+            <Link
+              className={`${styles.artNavBtn} ${styles.artNavRight}`}
+              href={nextHref}
+              aria-label="Next artwork"
+              transitionTypes={["nav-forward"]}
+            >
+              <span aria-hidden>›</span>
+            </Link>
+          </>
+        ) : null}
       </div>
 
       {artwork.address ? <p className={styles.address}>{artwork.address}</p> : null}

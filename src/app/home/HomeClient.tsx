@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ViewTransition } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
@@ -318,10 +325,13 @@ export function HomeClient({
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(undefined);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [mountMap, setMountMap] = useState(false);
-  const [mapAbsolute, setMapAbsolute] = useState(false);
+  /** Deep link `/?fs=1` (and facet params) should match server parse on first paint — see `page.tsx`. */
+  const [mountMap, setMountMap] = useState(() => !!initialFiltersFromUrl.fullscreen);
+  const [mapAbsolute, setMapAbsolute] = useState(() => !!initialFiltersFromUrl.fullscreen);
   const mapSectionRef = useRef<HTMLElement | null>(null);
-  const didAutoFullscreenMapRef = useRef(false);
+  const didAutoFullscreenMapRef = useRef(!!initialFiltersFromUrl.fullscreen);
+  /** Tracks whether the last applied URL had `fs=1` (for Back / history dropping `fs`). */
+  const hadFullscreenInUrlRef = useRef(!!initialFiltersFromUrl.fullscreen);
   const [searchQuery, setSearchQuery] = useState("");
 
   // UX: show the interactive map immediately on larger screens; keep mobile "click to load"
@@ -354,15 +364,23 @@ export function HomeClient({
     [searchKey],
   );
 
-  // If returning from a detail page with `fs=1`, restore fullscreen mode immediately.
-  useEffect(() => {
+  // Apply `fs=1` before paint so a follow-up effect cannot strip it from the URL first (desktop paste / share links).
+  useLayoutEffect(() => {
     if (!urlFilters.fullscreen) return;
-    if (typeof window === "undefined") return;
-    if (!window.matchMedia?.("(max-width: 640px)")?.matches) return;
     setMountMap(true);
     didAutoFullscreenMapRef.current = true;
     setMapAbsolute(true);
   }, [urlFilters.fullscreen]);
+
+  // When history removes `fs` (Back/Forward), leave immersive map mode without requiring another click.
+  useEffect(() => {
+    const parsed = parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey));
+    const hadFs = hadFullscreenInUrlRef.current;
+    hadFullscreenInUrlRef.current = parsed.fullscreen;
+    if (hadFs && !parsed.fullscreen && mapAbsolute) {
+      setMapAbsolute(false);
+    }
+  }, [searchKey, mapAbsolute]);
 
   // Performance: until the map/list UI is mounted, skip expensive filtering/facet work.
   const selectedCategories = useMemo(() => {
@@ -549,14 +567,6 @@ export function HomeClient({
     },
     [pathname, router],
   );
-
-  // Ensure the URL reflects fullscreen state (so Back/Forward & share links restore it).
-  useEffect(() => {
-    if (!mountMap) return;
-    const parsed = parseHomeFiltersFromUrlSearchParams(searchParams);
-    if (parsed.fullscreen === mapAbsolute) return;
-    replaceQueryWith({ ...parsed, fullscreen: mapAbsolute });
-  }, [mapAbsolute, mountMap, replaceQueryWith, searchParams]);
 
   const toggleCategory = useCallback(
     (key: string) => {
@@ -843,6 +853,7 @@ export function HomeClient({
                   onSelectSlug={onSelectArtwork}
                   onClearSelection={onClearSelection}
                   styleUrl={mapboxStyleUrl}
+                  homeQueryString={searchKey}
                 />
               ) : (
                 <button
@@ -1103,7 +1114,7 @@ export function HomeClient({
                         </span>
                       </button>
                       <Link
-                        href={`/art/${a.slug}`}
+                        href={`/art/${a.slug}${searchKey ? `?${searchKey}` : ""}`}
                         className={styles.detailLink}
                         prefetch={false}
                         transitionTypes={["nav-forward"]}
