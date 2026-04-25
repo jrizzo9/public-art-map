@@ -61,6 +61,8 @@
   width: 100%;
   max-width: 100%;
   height: auto;
+  /* Fallback when `min()` is unsupported (prevents huge images on older Safari). */
+  max-height: 60vh;
   max-height: min(60vh, 520px);
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -83,6 +85,8 @@
   border-radius: 0;
   width: 100%;
   height: auto;
+  /* Fallback when `min()` is unsupported (prevents huge images on older Safari). */
+  max-height: 60vh;
   max-height: min(60vh, 520px);
 }
 
