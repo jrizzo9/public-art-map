@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import popupStyles from "@/components/MapPopup.module.css";
 import type { Artwork } from "@/lib/sheet";
@@ -77,9 +77,11 @@ export function ArtworkMapPreview({
   popupOffsetY,
 }: Props) {
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const lngLat = useMemo((): [number, number] => [art.lng, art.lat], [art.lng, art.lat]);
 
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
+  const [nudge, setNudge] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     let raf = 0;
@@ -115,6 +117,36 @@ export function ArtworkMapPreview({
     };
   }, [map, lngLat]);
 
+  // Keep the preview fully inside the viewport (prevents it looking "cut off" near edges).
+  useEffect(() => {
+    let raf = 0;
+    const margin = 12;
+    const adjust = () => {
+      raf = 0;
+      const el = rootRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let dx = 0;
+      let dy = 0;
+      if (r.left < margin) dx += margin - r.left;
+      if (r.right > vw - margin) dx -= r.right - (vw - margin);
+      if (r.top < margin) dy += margin - r.top;
+      if (r.bottom > vh - margin) dy -= r.bottom - (vh - margin);
+      if (dx !== 0 || dy !== 0) {
+        setNudge((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+      }
+    };
+    // Wait for layout after pos/maxW changes.
+    raf = requestAnimationFrame(() => {
+      requestAnimationFrame(adjust);
+    });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pos.left, pos.top, pos.maxW, popupOffsetY]);
+
   const primaryImage = art.image ?? art.images?.[0];
 
   const { prevSlug, nextSlug } = useMemo(() => {
@@ -130,6 +162,7 @@ export function ArtworkMapPreview({
   return (
     <div
       data-artwork-map-preview
+      ref={rootRef}
       className={`artwork-map-preview-root ${popupStyles.popupRoot}`}
       style={{
         position: "fixed",
@@ -141,7 +174,7 @@ export function ArtworkMapPreview({
         boxSizing: "border-box",
         zIndex: 60,
         pointerEvents: "auto",
-        transform: `translate(-50%, calc(-100% + ${popupOffsetY}px))`,
+        transform: `translate(calc(-50% + ${nudge.x}px), calc(-100% + ${popupOffsetY}px + ${nudge.y}px))`,
         willChange: "transform",
       }}
     >
