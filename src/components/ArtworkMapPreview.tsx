@@ -83,6 +83,11 @@ export function ArtworkMapPreview({
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
   const [nudge, setNudge] = useState({ x: 0, y: 0 });
 
+  // Reset viewport nudge when switching artworks so corrections don’t carry over.
+  useEffect(() => {
+    setNudge({ x: 0, y: 0 });
+  }, [art.slug]);
+
   useEffect(() => {
     let raf = 0;
     const tick = () => {
@@ -134,9 +139,8 @@ export function ArtworkMapPreview({
       if (r.right > vw - margin) dx -= r.right - (vw - margin);
       if (r.top < margin) dy += margin - r.top;
       if (r.bottom > vh - margin) dy -= r.bottom - (vh - margin);
-      if (dx !== 0 || dy !== 0) {
-        setNudge((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
-      }
+      // Important: do not accumulate corrections; re-compute each time to avoid drift.
+      setNudge({ x: dx, y: dy });
     };
     // Wait for layout after pos/maxW changes.
     raf = requestAnimationFrame(() => {
