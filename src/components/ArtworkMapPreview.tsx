@@ -109,13 +109,24 @@ export function ArtworkMapPreview({
     };
 
     tick();
-    map.on("render", tick);
+    // `render` can fire continuously; use movement events to avoid choppy reflows.
+    map.on("move", tick);
+    map.on("moveend", tick);
+    map.on("zoom", tick);
+    map.on("zoomend", tick);
+    map.on("rotate", tick);
+    map.on("pitch", tick);
     map.on("resize", tick);
     window.addEventListener("scroll", tick, true);
     window.addEventListener("resize", tick);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      map.off("render", tick);
+      map.off("move", tick);
+      map.off("moveend", tick);
+      map.off("zoom", tick);
+      map.off("zoomend", tick);
+      map.off("rotate", tick);
+      map.off("pitch", tick);
       map.off("resize", tick);
       window.removeEventListener("scroll", tick, true);
       window.removeEventListener("resize", tick);
