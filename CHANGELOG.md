@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Map overview after closing preview:** increment **`previewClosedSignal`** from the home page when preview selection clears, and consume it in **`MapView`**, so **`fitBounds`** reliably returns to **all markers for the current filter** after **×** or map background (works with **`map.stop()`** so an in-flight **`flyTo`** does not block **`fitBounds`**).
 - **Map camera with filters + a selected artwork:** while the list is **narrowed** and a pin/row (or URL artwork) is active, **skip** the wide **`fitBounds`** pass so **`flyTo`** keeps that artwork in frame; the wide pass runs again when the preview clears or when nothing is selected.
 - **Stable map effect deps:** use **`artworksSlugsKey`** / **`boundsKey`** and a **`router` ref** for the popup so referential churn does not constantly recreate the Mapbox popup.
+- **Selected dot on first load:** apply the “focused” circle styling once the Mapbox layer exists (handles **URL `art=`** selection on first paint).
+- **Preview arrow visibility:** allow the arrow to extend outside the rounded card (inner wrapper keeps content clipped, arrow stays visible).
+- **Arrow-to-dot alignment:** compute the camera offset relative to the **padded** map viewport so the selected dot sits under the arrow even with the floating panel.
 
 ### Changed
 

@@ -26,7 +26,6 @@ const MIN_PREVIEW_PX = 200;
 const VIEWPORT_MARGIN_PX = 12;
 const CENTER_PANEL_HPAD = 16;
 const CENTER_Y_NUDGE_PX = 18;
-const ARROW_GAP_PX = 10;
 
 function computeCenteredAnchorPx(): { left: number; top: number } {
   const vw = window.innerWidth;
@@ -101,6 +100,7 @@ export function ArtworkMapPreview({
 }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const arrowRef = useRef<HTMLDivElement | null>(null);
 
   const sizeRef = useRef({ w: 0, h: 0 });
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
@@ -199,16 +199,19 @@ export function ArtworkMapPreview({
   // Provide arrow tip coordinates so the map can keep the selected dot directly underneath.
   useEffect(() => {
     if (!onArrowTipViewport) return;
-    const { w, h } = sizeRef.current;
-    if (!shown || w <= 0 || h <= 0) {
+    if (!shown) {
       onArrowTipViewport(null);
       return;
     }
-    // Card is centered at (pos.left,pos.top) with translate(-50%,-50%).
-    const tipX = pos.left + nudge.x;
-    const tipY = pos.top + nudge.y + h / 2 + ARROW_GAP_PX;
-    onArrowTipViewport({ x: tipX, y: tipY });
-  }, [onArrowTipViewport, pos.left, pos.top, nudge.x, nudge.y, shown]);
+    const arrow = arrowRef.current;
+    if (!arrow) {
+      onArrowTipViewport(null);
+      return;
+    }
+    const r = arrow.getBoundingClientRect();
+    // Arrow is a rotated square; use the bottom-middle of its bounding box as the tip point.
+    onArrowTipViewport({ x: r.left + r.width / 2, y: r.bottom });
+  }, [onArrowTipViewport, shown, pos.left, pos.top, nudge.x, nudge.y]);
 
   const { prevSlug, nextSlug } = useMemo(() => {
     if (artworks.length <= 1) return { prevSlug: null as string | null, nextSlug: null as string | null };
@@ -224,7 +227,7 @@ export function ArtworkMapPreview({
     <div
       data-artwork-map-preview
       ref={rootRef}
-      className={`artwork-map-preview-root ${popupStyles.popupRoot}`}
+      className="artwork-map-preview-root"
       style={{
         position: "fixed",
         left: pos.left,
@@ -241,112 +244,114 @@ export function ArtworkMapPreview({
         transition: "opacity 160ms ease",
       }}
     >
-      <div className={popupStyles.topRow}>
-        <div className={popupStyles.title}>{art.title}</div>
-        <button
-          type="button"
-          className={popupStyles.closeBtn}
-          aria-label="Close preview"
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-        >
-          ×
-        </button>
-      </div>
-
-      <div className={popupStyles.meta}>
-        {[art.artist?.trim(), art.year ? String(art.year) : undefined]
-          .filter(Boolean)
-          .join(", ") || art.category || "Artwork"}
-      </div>
-
-      <div className={popupStyles.imageBlock}>
-        {primaryImage ? (
-          <div className={popupStyles.imageFrame}>
-            <img
-              src={primaryImage}
-              alt={art.title}
-              loading="lazy"
-              className={popupStyles.image}
-            />
-          </div>
-        ) : (
-          <div
-            className={popupStyles.imagePlaceholder}
-            role="img"
-            aria-label="Photo not yet available"
+      <div className={`artwork-map-preview-inner ${popupStyles.popupRoot}`}>
+        <div className={popupStyles.topRow}>
+          <div className={popupStyles.title}>{art.title}</div>
+          <button
+            type="button"
+            className={popupStyles.closeBtn}
+            aria-label="Close preview"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
           >
-            <span className={popupStyles.placeholderInner} aria-hidden>
-              Photo coming soon
-            </span>
-          </div>
-        )}
+            ×
+          </button>
+        </div>
 
-        {prevSlug && nextSlug ? (
-          <>
-            <button
-              type="button"
-              className={`${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnLeft}`}
-              aria-label="Previous artwork"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectSlug(prevSlug);
-              }}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className={`${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnRight}`}
-              aria-label="Next artwork"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectSlug(nextSlug);
-              }}
-            >
-              ›
-            </button>
-          </>
-        ) : null}
-      </div>
+        <div className={popupStyles.meta}>
+          {[art.artist?.trim(), art.year ? String(art.year) : undefined]
+            .filter(Boolean)
+            .join(", ") || art.category || "Artwork"}
+        </div>
 
-      <div className={popupStyles.links}>
-        <Link
-          href={detailHref}
-          className={popupStyles.link}
-          prefetch={false}
-          transitionTypes={["nav-forward"]}
-          onClick={(e) => {
-            if (
-              e.metaKey ||
-              e.ctrlKey ||
-              e.shiftKey ||
-              e.altKey ||
-              e.button !== 0
-            ) {
-              return;
-            }
-            e.preventDefault();
-            router.push(detailHref, { transitionTypes: ["nav-forward"] });
-          }}
-        >
-          Details →
-        </Link>
-        {art.externalUrl ? (
-          <a
-            href={art.externalUrl}
-            rel="noopener noreferrer"
-            target="_blank"
+        <div className={popupStyles.imageBlock}>
+          {primaryImage ? (
+            <div className={popupStyles.imageFrame}>
+              <img
+                src={primaryImage}
+                alt={art.title}
+                loading="lazy"
+                className={popupStyles.image}
+              />
+            </div>
+          ) : (
+            <div
+              className={popupStyles.imagePlaceholder}
+              role="img"
+              aria-label="Photo not yet available"
+            >
+              <span className={popupStyles.placeholderInner} aria-hidden>
+                Photo coming soon
+              </span>
+            </div>
+          )}
+
+          {prevSlug && nextSlug ? (
+            <>
+              <button
+                type="button"
+                className={`${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnLeft}`}
+                aria-label="Previous artwork"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectSlug(prevSlug);
+                }}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                className={`${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnRight}`}
+                aria-label="Next artwork"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectSlug(nextSlug);
+                }}
+              >
+                ›
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        <div className={popupStyles.links}>
+          <Link
+            href={detailHref}
             className={popupStyles.link}
-            onClick={(e) => e.stopPropagation()}
+            prefetch={false}
+            transitionTypes={["nav-forward"]}
+            onClick={(e) => {
+              if (
+                e.metaKey ||
+                e.ctrlKey ||
+                e.shiftKey ||
+                e.altKey ||
+                e.button !== 0
+              ) {
+                return;
+              }
+              e.preventDefault();
+              router.push(detailHref, { transitionTypes: ["nav-forward"] });
+            }}
           >
-            Website →
-          </a>
-        ) : null}
+            Details →
+          </Link>
+          {art.externalUrl ? (
+            <a
+              href={art.externalUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+              className={popupStyles.link}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Website →
+            </a>
+          ) : null}
+        </div>
       </div>
-      <div className={popupStyles.previewArrow} aria-hidden />
+      <div ref={arrowRef} className={popupStyles.previewArrow} aria-hidden />
     </div>
   );
 }

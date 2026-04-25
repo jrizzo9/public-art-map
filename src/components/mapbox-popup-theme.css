@@ -3,10 +3,19 @@
   background: var(--card);
   color: var(--card-foreground);
   border-radius: calc(var(--radius) + 8px);
-  overflow: hidden;
+  overflow: visible;
   min-width: 0;
   border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
   box-shadow: var(--shadow-lg);
+  padding: 0;
+}
+
+/* Inner wrapper so the arrow can extend outside the card without clipping. */
+.artwork-map-preview-inner {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: calc(var(--radius) + 8px);
+  overflow: hidden;
   padding: 10px 10px 15px;
 }
 
@@ -26,4 +35,15 @@
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
   box-shadow: var(--shadow-lg);
+}
+
+.selected-map-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--primary) 72%, white);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.42),
+    0 0 0 6px rgba(0, 0, 0, 0.18),
+    0 10px 22px rgba(0, 0, 0, 0.35);
 }

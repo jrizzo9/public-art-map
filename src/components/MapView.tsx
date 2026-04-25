@@ -56,11 +56,17 @@ function selectionFlyPadding(map: MapboxMap) {
 /** Vertical `flyTo` offset (px) — preview card is portaled, not a Mapbox popup. */
 const PREVIEW_FLYTO_OFFSET_Y = 150;
 
-function computeOffsetFromViewportPoint(map: MapboxMap, pt: { x: number; y: number }) {
+function computeOffsetFromViewportPoint(
+  map: MapboxMap,
+  pt: { x: number; y: number },
+  padding: { top: number; right: number; bottom: number; left: number },
+) {
   const r = map.getContainer().getBoundingClientRect();
   const xIn = pt.x - r.left;
   const yIn = pt.y - r.top;
-  return [xIn - r.width / 2, yIn - r.height / 2] as [number, number];
+  const centerX = padding.left + (r.width - padding.left - padding.right) / 2;
+  const centerY = padding.top + (r.height - padding.top - padding.bottom) / 2;
+  return [xIn - centerX, yIn - centerY] as [number, number];
 }
 
 type Props = {
@@ -399,27 +405,39 @@ export function MapView({
     const map = mapRef.current;
     if (!map) return;
     const LAYER_ID = "artworks-circles";
-    if (!map.getLayer(LAYER_ID)) return;
 
-    const focus = highlightSlug || selectedSlug || "";
-    map.setPaintProperty(LAYER_ID, "circle-radius", [
-      "case",
-      ["==", ["get", "slug"], focus],
-      7,
-      5,
-    ]);
-    map.setPaintProperty(LAYER_ID, "circle-stroke-width", [
-      "case",
-      ["==", ["get", "slug"], focus],
-      2,
-      1,
-    ]);
-    map.setPaintProperty(LAYER_ID, "circle-stroke-color", [
-      "case",
-      ["==", ["get", "slug"], focus],
-      "rgba(0,0,0,0.45)",
-      "rgba(0,0,0,0.25)",
-    ]);
+    const apply = () => {
+      if (mapRef.current !== map) return;
+      if (!map.getLayer(LAYER_ID)) return;
+      const focus = highlightSlug || selectedSlug || "";
+      map.setPaintProperty(LAYER_ID, "circle-radius", [
+        "case",
+        ["==", ["get", "slug"], focus],
+        7,
+        5,
+      ]);
+      map.setPaintProperty(LAYER_ID, "circle-stroke-width", [
+        "case",
+        ["==", ["get", "slug"], focus],
+        2,
+        1,
+      ]);
+      map.setPaintProperty(LAYER_ID, "circle-stroke-color", [
+        "case",
+        ["==", ["get", "slug"], focus],
+        "rgba(0,0,0,0.45)",
+        "rgba(0,0,0,0.25)",
+      ]);
+    };
+
+    apply();
+    // On first load via URL params, the layer may not exist yet when this effect runs.
+    map.on("load", apply);
+    map.on("styledata", apply);
+    return () => {
+      map.off("load", apply);
+      map.off("styledata", apply);
+    };
   }, [highlightSlug, selectedSlug, mapReadyTick]);
 
   useEffect(() => {
@@ -563,7 +581,7 @@ export function MapView({
     { x: number; y: number } | null
   >(null);
 
-  // Keep the selected dot under the preview arrow tip.
+  // After the preview is measured, smoothly adjust the camera so the selected dot is under the arrow.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -573,19 +591,70 @@ export function MapView({
     if (!art || !Number.isFinite(art.lat) || !Number.isFinite(art.lng)) return;
     if (!map.isStyleLoaded()) return;
     try {
+      const padding = selectionFlyPadding(map);
       map.easeTo({
         center: [art.lng, art.lat],
         zoom: Math.max(map.getZoom(), 14),
-        padding: selectionFlyPadding(map),
+        padding,
         retainPadding: false,
         essential: true,
-        duration: 0,
-        offset: computeOffsetFromViewportPoint(map, previewArrowTipViewport),
+        duration: 520,
+        curve: 1.5,
+        offset: computeOffsetFromViewportPoint(map, previewArrowTipViewport, padding),
       });
     } catch {
       /* ignore */
     }
   }, [artworksSlugsKey, previewArrowTipViewport, selectedSlug]);
+
+  // Portaled "selected dot" so it's visible above the dim overlay and card.
+  const [selectedDotPos, setSelectedDotPos] = useState<{ left: number; top: number } | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!selectedSlug) {
+      setSelectedDotPos(null);
+      return;
+    }
+    const art = artworks.find((a) => a.slug === selectedSlug);
+    if (!art || !Number.isFinite(art.lat) || !Number.isFinite(art.lng)) {
+      setSelectedDotPos(null);
+      return;
+    }
+    const lngLat: [number, number] = [art.lng, art.lat];
+    let raf = 0;
+    const tick = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        try {
+          const p = map.project(lngLat);
+          const r = map.getContainer().getBoundingClientRect();
+          setSelectedDotPos({ left: r.left + p.x, top: r.top + p.y });
+        } catch {
+          /* ignore */
+        }
+      });
+    };
+    tick();
+    map.on("move", tick);
+    map.on("zoom", tick);
+    map.on("rotate", tick);
+    map.on("pitch", tick);
+    map.on("resize", tick);
+    window.addEventListener("scroll", tick, true);
+    window.addEventListener("resize", tick);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      map.off("move", tick);
+      map.off("zoom", tick);
+      map.off("rotate", tick);
+      map.off("pitch", tick);
+      map.off("resize", tick);
+      window.removeEventListener("scroll", tick, true);
+      window.removeEventListener("resize", tick);
+    };
+  }, [artworksSlugsKey, selectedSlug]);
 
   return (
     <>
@@ -594,18 +663,34 @@ export function MapView({
         previewArt &&
         mapForPortal &&
         createPortal(
-          <ArtworkMapPreview
-            map={mapForPortal}
-            art={previewArt}
-            artworks={artworks}
-            homeQueryString={homeQueryString ?? ""}
-            onClose={() => onClearSelectionRef.current?.()}
-            onSelectSlug={(slug) => onSelectSlugRef.current?.(slug)}
-            onArrowTipViewport={setPreviewArrowTipViewport}
-            popupOffsetY={
-              mapForPortal.getContainer().getBoundingClientRect().width < 640 ? -68 : -18
-            }
-          />,
+          <>
+            {selectedDotPos ? (
+              <div
+                aria-hidden
+                className="selected-map-dot"
+                style={{
+                  position: "fixed",
+                  left: selectedDotPos.left,
+                  top: selectedDotPos.top,
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 45,
+                  pointerEvents: "none",
+                }}
+              />
+            ) : null}
+            <ArtworkMapPreview
+              map={mapForPortal}
+              art={previewArt}
+              artworks={artworks}
+              homeQueryString={homeQueryString ?? ""}
+              onClose={() => onClearSelectionRef.current?.()}
+              onSelectSlug={(slug) => onSelectSlugRef.current?.(slug)}
+              onArrowTipViewport={setPreviewArrowTipViewport}
+              popupOffsetY={
+                mapForPortal.getContainer().getBoundingClientRect().width < 640 ? -68 : -18
+              }
+            />
+          </>,
           document.body,
         )}
     </>
