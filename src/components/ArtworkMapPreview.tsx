@@ -84,10 +84,12 @@ export function ArtworkMapPreview({
   const sizeRef = useRef({ w: 0, h: 0 });
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
   const [nudge, setNudge] = useState({ x: 0, y: 0 });
+  const [shown, setShown] = useState(false);
 
   // Reset viewport nudge when switching artworks so corrections don’t carry over.
   useEffect(() => {
     setNudge({ x: 0, y: 0 });
+    setShown(false);
   }, [art.slug]);
 
   // Track the rendered card size without forcing layout thrash on every map tick.
@@ -138,6 +140,8 @@ export function ArtworkMapPreview({
             if (Math.abs(dx) < 0.5) dx = 0;
             if (Math.abs(dy) < 0.5) dy = 0;
             setNudge({ x: dx, y: dy });
+            // Avoid showing an initial "wrong" frame (e.g. cut off at top) before clamp runs.
+            setShown(true);
           }
 
           setPos({ left, top, maxW });
@@ -201,6 +205,8 @@ export function ArtworkMapPreview({
         pointerEvents: "auto",
         transform: `translate(calc(-50% + ${nudge.x}px), calc(-100% + ${popupOffsetY}px + ${nudge.y}px))`,
         willChange: "transform",
+        opacity: shown ? 1 : 0,
+        transition: "opacity 160ms ease",
       }}
     >
       <div className={popupStyles.topRow}>
