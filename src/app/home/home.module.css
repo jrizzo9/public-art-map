@@ -785,6 +785,10 @@
   min-width: 0;
 }
 
+.listItemRowSelected {
+  background: color-mix(in oklch, var(--muted) 28%, var(--card));
+}
+
 .detailLink {
   flex-shrink: 0;
   align-self: center;
@@ -835,11 +839,12 @@
 }
 
 .itemSelected {
-  background: color-mix(in oklch, var(--muted) 28%, var(--card));
+  /* Selection background is applied to `.listItemRowSelected` so it spans under Details. */
+  background: transparent;
 }
 
 .itemSelected:hover {
-  background: color-mix(in oklch, var(--muted) 36%, var(--card));
+  background: transparent;
 }
 
 .title {

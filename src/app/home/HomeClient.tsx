@@ -1320,7 +1320,11 @@ export function HomeClient({
               <ul className={styles.ul}>
                 {filtered.map((a) => (
                   <li key={a.slug} className={styles.li}>
-                    <div className={styles.listItemRow}>
+                    <div
+                      className={`${styles.listItemRow}${
+                        selectedSlug === a.slug ? ` ${styles.listItemRowSelected}` : ""
+                      }`}
+                    >
                       <button
                         type="button"
                         className={`${styles.item}${
