@@ -21,6 +21,7 @@ type Props = {
 const PANEL = "[data-home-artwork-panel]";
 const PREVIEW_MAX_CAP = 680;
 const MIN_PREVIEW_PX = 200;
+const VIEWPORT_MARGIN_PX = 12;
 
 /**
  * Map container spans the full map card, but the list is a left overlay. Cap preview width
@@ -80,6 +81,7 @@ export function ArtworkMapPreview({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const lngLat = useMemo((): [number, number] => [art.lng, art.lat], [art.lng, art.lat]);
 
+  const sizeRef = useRef({ w: 0, h: 0 });
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
   const [nudge, setNudge] = useState({ x: 0, y: 0 });
 
@@ -87,6 +89,19 @@ export function ArtworkMapPreview({
   useEffect(() => {
     setNudge({ x: 0, y: 0 });
   }, [art.slug]);
+
+  // Track the rendered card size without forcing layout thrash on every map tick.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const box = entries[0]?.contentRect;
+      if (!box) return;
+      sizeRef.current = { w: box.width, h: box.height };
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     let raf = 0;
@@ -97,11 +112,35 @@ export function ArtworkMapPreview({
         try {
           const p = map.project(lngLat);
           const r = map.getContainer().getBoundingClientRect();
-          setPos({
-            left: r.left + p.x,
-            top: r.top + p.y,
-            maxW: computePreviewMaxWidthPx(map),
-          });
+          const left = r.left + p.x;
+          const top = r.top + p.y;
+          const maxW = computePreviewMaxWidthPx(map);
+
+          // Deterministic viewport clamp (no oscillation while the map is animating).
+          const { w, h } = sizeRef.current;
+          if (w > 0 && h > 0) {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            let dx = 0;
+            let dy = 0;
+
+            const rectLeft = left - w / 2;
+            const rectRight = rectLeft + w;
+            const rectTop = top - h + popupOffsetY;
+            const rectBottom = rectTop + h;
+
+            if (rectLeft < VIEWPORT_MARGIN_PX) dx += VIEWPORT_MARGIN_PX - rectLeft;
+            if (rectRight > vw - VIEWPORT_MARGIN_PX) dx -= rectRight - (vw - VIEWPORT_MARGIN_PX);
+            if (rectTop < VIEWPORT_MARGIN_PX) dy += VIEWPORT_MARGIN_PX - rectTop;
+            if (rectBottom > vh - VIEWPORT_MARGIN_PX) dy -= rectBottom - (vh - VIEWPORT_MARGIN_PX);
+
+            // Avoid tiny jitter around the threshold.
+            if (Math.abs(dx) < 0.5) dx = 0;
+            if (Math.abs(dy) < 0.5) dy = 0;
+            setNudge({ x: dx, y: dy });
+          }
+
+          setPos({ left, top, maxW });
         } catch {
           /* map mid-teardown */
         }
@@ -132,35 +171,6 @@ export function ArtworkMapPreview({
       window.removeEventListener("resize", tick);
     };
   }, [map, lngLat]);
-
-  // Keep the preview fully inside the viewport (prevents it looking "cut off" near edges).
-  useEffect(() => {
-    let raf = 0;
-    const margin = 12;
-    const adjust = () => {
-      raf = 0;
-      const el = rootRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      let dx = 0;
-      let dy = 0;
-      if (r.left < margin) dx += margin - r.left;
-      if (r.right > vw - margin) dx -= r.right - (vw - margin);
-      if (r.top < margin) dy += margin - r.top;
-      if (r.bottom > vh - margin) dy -= r.bottom - (vh - margin);
-      // Important: do not accumulate corrections; re-compute each time to avoid drift.
-      setNudge({ x: dx, y: dy });
-    };
-    // Wait for layout after pos/maxW changes.
-    raf = requestAnimationFrame(() => {
-      requestAnimationFrame(adjust);
-    });
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [pos.left, pos.top, pos.maxW, popupOffsetY]);
 
   const primaryImage = art.image ?? art.images?.[0];
 
