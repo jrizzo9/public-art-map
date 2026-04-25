@@ -11,7 +11,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 
 ## UI notes
 
-- **Theming:** the app uses **Tailwind CSS v4**, **shadcn/ui** primitives, and a shared **semantic palette** (CSS variables in `src/app/globals.css`) so the floating panel, detail pages, embed shell, and Mapbox-built popup/marker chrome stay visually consistent.
+- **Theming:** the app uses **Tailwind CSS v4**, **shadcn/ui** primitives, and a shared **semantic palette** (CSS variables in `src/app/globals.css`) so the floating panel, detail pages, embed shell, **map preview** card, and Mapbox **marker** chrome stay visually consistent.
 - **Branding:** fixed **top-left** chrome ([Creative Waco](https://creativewaco.org/) logo + **Public Art Map**) via shared **`SiteBrandBar`** on the **home map**, **`/art/[slug]`**, and **404**; copy and root metadata titles read from **`src/lib/site.ts`**. On the map, the bar sits clear of the **left** list panel. **Embed** artwork pages show a header link to the full map using the same product name.
 - **Home landing (`/`):** software-style intro (headline, short description, CTAs) above a **rounded-corner** map card. The interactive Mapbox map is optimized for performance:
   - **Desktop/tablet:** the interactive map mounts automatically.
@@ -22,8 +22,8 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 - **Search + filters:** the panel includes a **search bar** (refines map + list) and a toggle button that switches the panel between **Filters** and **List** modes (only one visible at a time). Filters include **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range. **Active filters are reflected in the URL** (query keys `cat`, `comm`, `coll`, `ymin`, `ymax`, plus **`fs=1`** when the map is in full-viewport mode, and optional **`art=<slug>`** for the selected artwork) for sharing and browser history; opening a pasted link restores that state on first load. Facet values in the query string are compared case-insensitively, and **`+`** is treated like a space so encoded names (e.g. multi-word collections) still match the sheet.
 - **Single-collection mode:** when exactly one **collection** chip is selected, the panel shows a short **Curated collection by** line and the **Creative Waco** logo under the list.
 - **Exit fullscreen map:** when the map is expanded to full viewport, an **Exit map** button appears and **Escape** exits as well.
-- Choosing an artwork from the list row (main hit target) or from a map dot opens a **popup above the dot** with title, **artist/year** (when available), an image preview that shows the **full photo** (no crop), and a link to **Details →**; with a **narrowed** list, the camera also **flies** to that point (smooth `flyTo`). Each row has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the popup. Artwork detail pages also include a **Nearby art** section (sorted by distance) to jump to nearby works; thumbnails show the **full photo** (no crop).
-- Click empty map area to clear the popup selection.
+- Choosing an artwork from the list row (main hit target) or from a map dot opens a **preview card** (rendered above the map, with the **map area dimmed**) showing the title, **artist/year** (when available), an image preview that shows the **full photo** (no crop), and **Details →**; with a **narrowed** list, the camera also **flies** to that point (smooth `flyTo`). Each row has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the preview. Artwork detail pages also include a **Nearby art** section (sorted by distance) to jump to nearby works; thumbnails show the **full photo** (no crop).
+- Click empty map area to clear the preview selection.
 
 ## Sheet contract (columns)
 
@@ -59,7 +59,7 @@ NEXT_PUBLIC_SITE_URL="https://map.creativewaco.org"
 SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.XXXX"
 
-# Optional
+# Optional (defaults to the Creative Waco Mapbox Studio style when unset)
 NEXT_PUBLIC_MAPBOX_STYLE_URL="mapbox://styles/..."
 # Seconds between CSV refetches (ISR). Use 0 for no cache—always fetch latest sheet.
 REVALIDATE_SECONDS="300"

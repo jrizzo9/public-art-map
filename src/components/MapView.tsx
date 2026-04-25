@@ -3,15 +3,10 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@/components/mapbox-popup-theme.css";
 
-import type {
-  LngLatBoundsLike,
-  Map as MapboxMap,
-  Popup as MapboxPopup,
-  MapMouseEvent,
-} from "mapbox-gl";
-import { useRouter } from "next/navigation";
+import type { LngLatBoundsLike, Map as MapboxMap, MapMouseEvent } from "mapbox-gl";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import popupStyles from "@/components/MapPopup.module.css";
+import { ArtworkMapPreview } from "@/components/ArtworkMapPreview";
 import { markerColorForCategory } from "@/lib/category-colors";
 import type { Artwork } from "@/lib/sheet";
 
@@ -58,36 +53,8 @@ function selectionFlyPadding(map: MapboxMap) {
   return mapChromePadding(map);
 }
 
-/** Mapbox draws a tip below `.mapboxgl-popup-content`; off-DOM probe omits it — add slack so offset matches real popup height. */
-const MAPBOX_POPUP_TAIL_BELOW_CARD_ESTIMATE_PX = 18;
-
-/**
- * Approximate full popup stack height before `Popup` mounts (wrap + themed content shell + tip slack).
- */
-function measureArtworkPopupOuterHeightPx(
-  wrap: HTMLElement,
-  maxWidthCss: string,
-): number {
-  const outer = document.createElement("div");
-  outer.style.cssText =
-    "position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;contain:layout;";
-  outer.style.maxWidth = maxWidthCss;
-
-  const content = document.createElement("div");
-  content.className = "mapboxgl-popup-content";
-  content.appendChild(wrap);
-
-  outer.appendChild(content);
-  document.body.appendChild(outer);
-
-  const measured = outer.offsetHeight;
-
-  content.removeChild(wrap);
-  outer.remove();
-
-  const h = measured + MAPBOX_POPUP_TAIL_BELOW_CARD_ESTIMATE_PX;
-  return Number.isFinite(h) && h > 80 ? h : 280;
-}
+/** Vertical `flyTo` offset (px) — preview card is portaled, not a Mapbox popup. */
+const PREVIEW_FLYTO_OFFSET_Y = 150;
 
 type Props = {
   artworks: Artwork[];
@@ -122,16 +89,12 @@ export function MapView({
   previewClosedSignal = 0,
   mapShowsFullCatalog = false,
 }: Props) {
-  const router = useRouter();
-  const routerRef = useRef(router);
-  routerRef.current = router;
   const containerRef = useRef<HTMLDivElement | null>(null);
   type MapboxModule = typeof import("mapbox-gl");
   type MapboxGL = MapboxModule["default"];
   const mapboxglRef = useRef<MapboxGL | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const [mapReadyTick, setMapReadyTick] = useState(0);
-  const popupRef = useRef<MapboxPopup | null>(null);
   const ignoreNextMapClickRef = useRef(false);
   const hasFittedBoundsOnceRef = useRef(false);
   /** When bounds change (filters), allow `fitBounds` again even if a row is selected. */
@@ -146,10 +109,6 @@ export function MapView({
   const lastConsumedPreviewCloseSignalRef = useRef(0);
   const onSelectSlugRef = useRef(onSelectSlug);
   const onClearSelectionRef = useRef(onClearSelection);
-  /** Latest filters+`art` for detail links — not a popup effect dep so URL sync doesn’t remount the popup. */
-  const homeQueryStringRef = useRef(homeQueryString);
-  homeQueryStringRef.current = homeQueryString;
-
   useEffect(() => {
     onSelectSlugRef.current = onSelectSlug;
     onClearSelectionRef.current = onClearSelection;
@@ -177,6 +136,13 @@ export function MapView({
     () => artworks.map((a) => a.slug).join("\0"),
     [artworks],
   );
+
+  const previewArt = useMemo(() => {
+    if (!selectedSlug) return null;
+    const a = artworks.find((x) => x.slug === selectedSlug);
+    if (!a || !Number.isFinite(a.lat) || !Number.isFinite(a.lng)) return null;
+    return a;
+  }, [artworks, selectedSlug]);
 
   const geojson = useMemo<
     GeoJSON.FeatureCollection<GeoJSON.Point, Record<string, unknown>>
@@ -460,7 +426,7 @@ export function MapView({
       }
 
       const target = e.originalEvent?.target as HTMLElement | null;
-      if (target?.closest(".mapboxgl-popup")) return;
+      if (target?.closest("[data-artwork-map-preview]")) return;
 
       onClearSelectionRef.current?.();
     };
@@ -526,166 +492,18 @@ export function MapView({
     };
   }, [mapReadyTick]);
 
+  /** Camera only — preview UI is portaled to `document.body` so the map area can be dimmed underneath. */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const mapboxgl = mapboxglRef.current;
-    if (!mapboxgl) return;
-
-    popupRef.current?.remove();
-    popupRef.current = null;
 
     if (!selectedSlug) return;
     const art = artworks.find((a) => a.slug === selectedSlug);
-    if (!art) return;
+    if (!art || !Number.isFinite(art.lat) || !Number.isFinite(art.lng)) return;
 
     const lngLat: [number, number] = [art.lng, art.lat];
 
-    const wrap = document.createElement("div");
-    wrap.className = popupStyles.popupRoot;
-
-    const top = document.createElement("div");
-    top.className = popupStyles.topRow;
-
-    const title = document.createElement("div");
-    title.className = popupStyles.title;
-    title.textContent = art.title;
-
-    const close = document.createElement("button");
-    close.type = "button";
-    close.textContent = "×";
-    close.setAttribute("aria-label", "Close preview");
-    close.className = popupStyles.closeBtn;
-    close.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClearSelectionRef.current?.();
-    });
-
-    top.appendChild(title);
-    top.appendChild(close);
-    wrap.appendChild(top);
-
-    const meta = document.createElement("div");
-    meta.className = popupStyles.meta;
-    meta.textContent =
-      [art.artist?.trim(), art.year ? String(art.year) : undefined]
-        .filter(Boolean)
-        .join(", ") || art.category || "Artwork";
-    wrap.appendChild(meta);
-
-    const primaryImage = art.image ?? art.images?.[0];
-    if (primaryImage) {
-      const frame = document.createElement("div");
-      frame.className = popupStyles.imageFrame;
-
-      const img = document.createElement("img");
-      img.src = primaryImage;
-      img.alt = art.title;
-      img.loading = "lazy";
-      img.className = popupStyles.image;
-
-      frame.appendChild(img);
-      wrap.appendChild(frame);
-    } else {
-      const ph = document.createElement("div");
-      ph.className = popupStyles.imagePlaceholder;
-      ph.setAttribute("role", "img");
-      ph.setAttribute("aria-label", "Photo not yet available");
-      const label = document.createElement("span");
-      label.className = popupStyles.placeholderInner;
-      label.textContent = "Photo coming soon";
-      label.setAttribute("aria-hidden", "true");
-      ph.appendChild(label);
-      wrap.appendChild(ph);
-    }
-
-    const links = document.createElement("div");
-    links.className = popupStyles.links;
-
-    const details = document.createElement("a");
-    const detailHrefForSlug = (slug: string) => {
-      const qs = homeQueryStringRef.current
-        ? homeQueryStringRef.current.replace(/^\?/, "")
-        : "";
-      return qs ? `/art/${slug}?${qs}` : `/art/${slug}`;
-    };
-    details.href = detailHrefForSlug(art.slug);
-    details.textContent = "Details →";
-    details.className = popupStyles.link;
-    details.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (
-        e.metaKey ||
-        e.ctrlKey ||
-        e.shiftKey ||
-        e.altKey ||
-        e.button !== 0
-      ) {
-        return;
-      }
-      e.preventDefault();
-      routerRef.current.push(detailHrefForSlug(art.slug), {
-        transitionTypes: ["nav-forward"],
-      });
-    });
-
-    links.appendChild(details);
-
-    if (art.externalUrl) {
-      const ext = document.createElement("a");
-      ext.href = art.externalUrl;
-      ext.rel = "noopener noreferrer";
-      ext.target = "_blank";
-      ext.textContent = "Website →";
-      ext.className = popupStyles.link;
-      ext.addEventListener("click", (e) => e.stopPropagation());
-      links.appendChild(ext);
-    }
-
-    wrap.appendChild(links);
-
-    // Artwork cycling: prev/next within the currently-filtered artworks list.
-    if (artworks.length > 1) {
-      const idx = Math.max(
-        0,
-        artworks.findIndex((a) => a.slug === art.slug),
-      );
-      const prevSlug = artworks[(idx - 1 + artworks.length) % artworks.length]?.slug;
-      const nextSlug = artworks[(idx + 1) % artworks.length]?.slug;
-
-      if (prevSlug && nextSlug) {
-        const prevArt = document.createElement("button");
-        prevArt.type = "button";
-        prevArt.className = `${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnLeft}`;
-        prevArt.setAttribute("aria-label", "Previous artwork");
-        prevArt.textContent = "‹";
-        prevArt.addEventListener("click", (e) => {
-          e.stopPropagation();
-          onSelectSlugRef.current?.(prevSlug);
-        });
-
-        const nextArt = document.createElement("button");
-        nextArt.type = "button";
-        nextArt.className = `${popupStyles.artworkNavBtn} ${popupStyles.artworkNavBtnRight}`;
-        nextArt.setAttribute("aria-label", "Next artwork");
-        nextArt.textContent = "›";
-        nextArt.addEventListener("click", (e) => {
-          e.stopPropagation();
-          onSelectSlugRef.current?.(nextSlug);
-        });
-
-        // Attach to the popup root so it works whether we show a photo or placeholder.
-        wrap.appendChild(prevArt);
-        wrap.appendChild(nextArt);
-      }
-    }
-
-    const narrow = map.getContainer().getBoundingClientRect().width < 640;
-    const popupMaxWidth = narrow ? "min(680px, calc(100vw - 32px))" : "680px";
-    const popupOuterH = measureArtworkPopupOuterHeightPx(wrap, popupMaxWidth);
-    const popupOffsetY = narrow ? -68 : -18;
-
-    const applyCameraAndPopup = () => {
+    const applyCamera = () => {
       if (mapRef.current !== map) return;
       if (!map.isStyleLoaded()) return;
 
@@ -697,27 +515,10 @@ export function MapView({
         essential: true,
         duration: 900,
         curve: 1.5,
-        offset: [0, popupOuterH / 2],
+        offset: [0, PREVIEW_FLYTO_OFFSET_Y],
       });
-
-      const popup = new mapboxgl.Popup({
-        anchor: "bottom",
-        closeButton: false,
-        closeOnClick: false,
-        maxWidth: popupMaxWidth,
-        offset: [0, popupOffsetY] as [number, number],
-      })
-        .setLngLat(lngLat)
-        .setDOMContent(wrap)
-        .addTo(map);
-
-      popupRef.current = popup;
     };
 
-    /**
-     * Defer so `fitBounds` (same tick / `load`) can run first. `load` may already have fired before
-     * this listener is attached — use `idle` as a fallback so `flyTo` + popup still run.
-     */
     let applied = false;
     const tryApplyCamera = () => {
       if (applied || mapRef.current !== map) return;
@@ -725,7 +526,7 @@ export function MapView({
       applied = true;
       map.off("load", tryApplyCamera);
       map.off("idle", tryApplyCamera);
-      applyCameraAndPopup();
+      applyCamera();
     };
 
     const id = window.setTimeout(() => {
@@ -741,17 +542,38 @@ export function MapView({
       window.clearTimeout(id);
       map.off("load", tryApplyCamera);
       map.off("idle", tryApplyCamera);
-      popupRef.current?.remove();
-      popupRef.current = null;
       try {
         map.stop();
       } catch {
         /* map may be mid-teardown */
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `artworks`/`bounds` via slugsKey/boundsKey; router ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `artworks`/`bounds` via slugsKey/boundsKey
   }, [artworksSlugsKey, boundsKey, mapReadyTick, mapShowsFullCatalog, selectedSlug]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  const mapForPortal = mapRef.current;
+
+  return (
+    <>
+      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+      {mapReadyTick > 0 &&
+        previewArt &&
+        mapForPortal &&
+        createPortal(
+          <ArtworkMapPreview
+            map={mapForPortal}
+            art={previewArt}
+            artworks={artworks}
+            homeQueryString={homeQueryString ?? ""}
+            onClose={() => onClearSelectionRef.current?.()}
+            onSelectSlug={(slug) => onSelectSlugRef.current?.(slug)}
+            popupOffsetY={
+              mapForPortal.getContainer().getBoundingClientRect().width < 640 ? -68 : -18
+            }
+          />,
+          document.body,
+        )}
+    </>
+  );
 }
 

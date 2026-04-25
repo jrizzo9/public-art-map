@@ -228,6 +228,17 @@
     0 0 90px color-mix(in oklch, var(--primary) 26%, transparent);
   overflow: hidden;
   height: min(72vh, 720px);
+  transition:
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+/* When the map is dimmed for preview, the default card highlight reads as a thin white frame. */
+.mapCardPreviewOpen {
+  border-color: color-mix(in oklch, var(--border) 70%, black);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.55),
+    0 0 90px color-mix(in oklch, var(--primary) 22%, transparent);
 }
 
 .mapCardPoster {
@@ -272,6 +283,28 @@
 .mapViewport {
   position: absolute;
   inset: 0;
+}
+
+/* Sits above the WebGL map (MapView) but below the portaled preview card (body z-index). */
+.mapPreviewBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  will-change: opacity;
+}
+
+.mapPreviewBackdropVisible {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapPreviewBackdrop {
+    transition-duration: 0.01ms;
+  }
 }
 
 .mapLoadBtn {

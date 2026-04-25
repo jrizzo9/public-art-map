@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ArtworkMapPreview`** (`src/components/ArtworkMapPreview.tsx`): portaled **map selection preview** for the home map (title, image, prev/next, links) positioned from the map projection and sized to the available map column.
+
 ### Fixed
 
 - **Home `art=` in the address bar:** compare `router.replace` deduping to the **real** query string so `art=<slug>` actually syncs when you select a list row or map marker.
@@ -23,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`stripArtSlugFromQueryString`** in **`home-filter-url.ts`** to support facet parsing without **`art=`** churn.
 - **Filter-selection sync effect** depends on **`filteredSlugsKey`** instead of **`filtered`** identity alone.
 - **`SiteBrandBar`** / **`SiteNavigation`:** add **`data-site-brand-bar`** and **`data-site-nav`** hooks for tests or automation.
+- **Home map preview:** replace the Mapbox **`Popup`** with a **portaled** React preview so the **map** (not the list) can be **dimmed** reliably; **ease** dim + map card chrome in/out instead of an instant cut.
+- **Preview layout:** constrain preview **width** to the space beside the **floating list** and the viewport edge; let the **image** block **height** follow each photo (with a **viewport max-height** cap) instead of a fixed box with empty bands.
+- **Default Mapbox style:** when **`NEXT_PUBLIC_MAPBOX_STYLE_URL`** is unset, fall back to this app’s **Creative Waco** Mapbox Studio style (override per deployment as needed).
 
 ## [0.2.0] - 2026-04-24
 

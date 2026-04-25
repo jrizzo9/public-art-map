@@ -1,3 +1,23 @@
+/* Portaled map preview (not .mapboxgl-popup) — match card chrome from Mapbox popup theme. */
+.artwork-map-preview-root {
+  background: var(--card);
+  color: var(--card-foreground);
+  border-radius: calc(var(--radius) + 8px);
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  box-shadow: var(--shadow-lg);
+  padding: 10px 10px 15px;
+}
+
+.mapboxgl-map .mapboxgl-popup {
+  z-index: 2;
+}
+
+.mapboxgl-map .mapboxgl-control-container {
+  z-index: 3;
+}
+
 /* Mapbox GL wraps setDOMContent in .mapboxgl-popup-content — round to match app cards. */
 .mapboxgl-popup-content {
   background: var(--card);

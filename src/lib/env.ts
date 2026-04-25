@@ -30,8 +30,13 @@ export const env = {
     ),
   SHEET_CSV_URL: () => optional("SHEET_CSV_URL") ?? "",
   NEXT_PUBLIC_MAPBOX_TOKEN: () => optional("NEXT_PUBLIC_MAPBOX_TOKEN") ?? "",
+  /**
+   * Mapbox Studio default for this app. Override with `NEXT_PUBLIC_MAPBOX_STYLE_URL` (e.g. on Vercel).
+   * https://studio.mapbox.com
+   */
   NEXT_PUBLIC_MAPBOX_STYLE_URL: () =>
-    process.env.NEXT_PUBLIC_MAPBOX_STYLE_URL ?? "",
+    optional("NEXT_PUBLIC_MAPBOX_STYLE_URL") ??
+    "mapbox://styles/joshrizzocw/cmodpjicm00bv01scddibghqk",
   /** If true, attempt to geocode address when lat/lng missing. */
   GEOCODE_MISSING_COORDS: () => {
     const raw = optional("GEOCODE_MISSING_COORDS");

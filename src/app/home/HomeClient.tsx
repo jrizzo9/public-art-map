@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { ViewTransition } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, TransitionEvent } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -406,6 +406,37 @@ export function HomeClient({
   /** Tracks whether the last applied URL had `fs=1` (for Back / history dropping `fs`). */
   const hadFullscreenInUrlRef = useRef(!!initialFiltersFromUrl.fullscreen);
   const [searchQuery, setSearchQuery] = useState("");
+
+  /** Preview dim: keeps backdrop mounted for opacity exit so the fade is smooth both ways. */
+  const previewDimWanted = mountMap && !!selectedSlug;
+  const [mapPreviewBackdropMount, setMapPreviewBackdropMount] = useState(false);
+  const [mapPreviewBackdropVisible, setMapPreviewBackdropVisible] = useState(false);
+
+  useEffect(() => {
+    if (!previewDimWanted) {
+      setMapPreviewBackdropVisible(false);
+      return;
+    }
+    setMapPreviewBackdropMount(true);
+    let cancelled = false;
+    const raf1 = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) setMapPreviewBackdropVisible(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+    };
+  }, [previewDimWanted]);
+
+  const onMapPreviewBackdropTransitionEnd = useCallback(
+    (e: TransitionEvent<HTMLDivElement>) => {
+      if (e.propertyName !== "opacity") return;
+      if (!previewDimWanted) setMapPreviewBackdropMount(false);
+    },
+    [previewDimWanted],
+  );
 
   // UX: show the interactive map immediately on larger screens; keep mobile "click to load"
   // to protect performance and avoid loading Mapbox unnecessarily on small devices.
@@ -1034,9 +1065,18 @@ export function HomeClient({
           <div
             className={`${styles.mapCard}${!mountMap ? ` ${styles.mapCardPoster}` : ""}${
               mapAbsolute ? ` ${styles.mapCardAbsolute}` : ""
-            }`}
+            }${mountMap && selectedSlug ? ` ${styles.mapCardPreviewOpen}` : ""}`}
           >
             <div className={styles.mapViewport}>
+              {mapPreviewBackdropMount ? (
+                <div
+                  className={`${styles.mapPreviewBackdrop}${
+                    mapPreviewBackdropVisible ? ` ${styles.mapPreviewBackdropVisible}` : ""
+                  }`}
+                  aria-hidden
+                  onTransitionEnd={onMapPreviewBackdropTransitionEnd}
+                />
+              ) : null}
               {mountMap ? (
                 <MapView
                   artworks={filtered}
@@ -1079,6 +1119,7 @@ export function HomeClient({
       {mountMap ? (
         <aside
           className={`${styles.panel}${filtersOpen ? ` ${styles.panelFiltersOpen}` : ""}`}
+          data-home-artwork-panel
           aria-label="Artwork list"
         >
           <div className={styles.filterHeader}>
