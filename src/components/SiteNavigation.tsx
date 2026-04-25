@@ -31,7 +31,7 @@ export function SiteNavigation() {
   ];
 
   return (
-    <nav className={styles.nav} aria-label="Site navigation">
+    <nav className={styles.nav} aria-label="Site navigation" data-site-nav>
       {links.map(({ href, label, active }) => (
         <Link
           key={href}

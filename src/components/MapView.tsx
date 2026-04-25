@@ -99,9 +99,9 @@ type Props = {
   /** Query string from the home page (filters + fs) to preserve context. */
   homeQueryString?: string;
   /**
-   * When true, the `artworks` list is the entire catalog — keep the camera on a single `fitBounds`
-   * that shows every pin (panel padding), and do not `flyTo` on selection. When false (subset),
-   * selection uses `flyTo` like a narrowed search.
+   * When true, the map is showing the full catalog (no narrowing). Used for debounce/duration on
+   * filter-driven `fitBounds`. Selection still uses `flyTo`; we skip redundant `fitBounds` when only
+   * `selectedSlug` changes so `flyTo` is not overwritten.
    */
   mapShowsFullCatalog?: boolean;
 };
@@ -117,6 +117,8 @@ export function MapView({
   mapShowsFullCatalog = false,
 }: Props) {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const containerRef = useRef<HTMLDivElement | null>(null);
   type MapboxModule = typeof import("mapbox-gl");
   type MapboxGL = MapboxModule["default"];
@@ -128,8 +130,13 @@ export function MapView({
   const hasFittedBoundsOnceRef = useRef(false);
   /** When bounds change (filters), allow `fitBounds` again even if a row is selected. */
   const lastFittedBoundsKeyRef = useRef<string>("");
+  /** Tracks last `selectedSlug` so we can run a bouncy overview `fitBounds` when preview clears. */
+  const prevSelectedSlugForFitRef = useRef<string | undefined>(undefined);
   const onSelectSlugRef = useRef(onSelectSlug);
   const onClearSelectionRef = useRef(onClearSelection);
+  /** Latest filters+`art` for detail links — not a popup effect dep so URL sync doesn’t remount the popup. */
+  const homeQueryStringRef = useRef(homeQueryString);
+  homeQueryStringRef.current = homeQueryString;
 
   useEffect(() => {
     onSelectSlugRef.current = onSelectSlug;
@@ -152,6 +159,12 @@ export function MapView({
       [maxLon, maxLat],
     ] satisfies LngLatBoundsLike;
   }, [artworks]);
+
+  const boundsKey = useMemo(() => (bounds ? JSON.stringify(bounds) : ""), [bounds]);
+  const artworksSlugsKey = useMemo(
+    () => artworks.map((a) => a.slug).join("\0"),
+    [artworks],
+  );
 
   const geojson = useMemo<
     GeoJSON.FeatureCollection<GeoJSON.Point, Record<string, unknown>>
@@ -263,6 +276,12 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !bounds) return;
 
+    const prevSlug = prevSelectedSlugForFitRef.current;
+    const clearedMapPreview =
+      typeof prevSlug === "string" &&
+      prevSlug.length > 0 &&
+      selectedSlug === undefined;
+
     const slugInList =
       !!selectedSlug &&
       artworks.some(
@@ -272,25 +291,28 @@ export function MapView({
           Number.isFinite(a.lng),
       );
 
-    const boundsKey = JSON.stringify(bounds);
-
     /**
-     * Subset list: after fitting, selection uses `flyTo` — skip repeat `fitBounds` for the same bounds.
-     * Full catalog on the map: always refit so every pin stays in view (no `flyTo` in popup effect).
+     * After the first `fitBounds` for these bounds, changing only `selectedSlug` should not refit —
+     * the popup effect uses `flyTo`. Without this skip, full-catalog mode re-ran `fitBounds` on
+     * every click and cancelled pin zoom.
      */
-    const selectionDrivesCamera =
-      !mapShowsFullCatalog &&
+    const skipFitForSelectionOnly =
       hasFittedBoundsOnceRef.current &&
       slugInList &&
       lastFittedBoundsKeyRef.current === boundsKey;
-    if (selectionDrivesCamera) return;
+    if (skipFitForSelectionOnly) {
+      prevSelectedSlugForFitRef.current = selectedSlug;
+      return;
+    }
 
-    const delay =
-      !mapShowsFullCatalog && hasFittedBoundsOnceRef.current
+    const delay = clearedMapPreview
+      ? 0
+      : !mapShowsFullCatalog && hasFittedBoundsOnceRef.current
         ? FIT_BOUNDS_DEBOUNCE_MS
         : 0;
-    const fitDuration =
-      mapShowsFullCatalog || !hasFittedBoundsOnceRef.current
+    const fitDuration = clearedMapPreview
+      ? FIT_BOUNDS_DURATION_MS
+      : mapShowsFullCatalog || !hasFittedBoundsOnceRef.current
         ? 0
         : FIT_BOUNDS_DURATION_MS;
     const runFit = () => {
@@ -309,6 +331,9 @@ export function MapView({
       });
       hasFittedBoundsOnceRef.current = true;
       lastFittedBoundsKeyRef.current = boundsKey;
+      // Only commit after fit runs — if we cleared this ref at effect end, a quick re-run
+      // (e.g. `artworks` identity / URL sync) could cancel the timeout and lose `clearedMapPreview`.
+      prevSelectedSlugForFitRef.current = selectedSlug;
     };
 
     const id = window.setTimeout(() => {
@@ -321,7 +346,8 @@ export function MapView({
       window.clearTimeout(id);
       map.off("load", runFit);
     };
-  }, [bounds, mapReadyTick, mapShowsFullCatalog, selectedSlug, artworks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `bounds`/`artworks` via boundsKey/artworksSlugsKey
+  }, [artworksSlugsKey, boundsKey, mapReadyTick, mapShowsFullCatalog, selectedSlug]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -504,9 +530,13 @@ export function MapView({
     links.className = popupStyles.links;
 
     const details = document.createElement("a");
-    const qs = homeQueryString ? homeQueryString.replace(/^\?/, "") : "";
-    const detailHref = qs ? `/art/${art.slug}?${qs}` : `/art/${art.slug}`;
-    details.href = detailHref;
+    const detailHrefForSlug = (slug: string) => {
+      const qs = homeQueryStringRef.current
+        ? homeQueryStringRef.current.replace(/^\?/, "")
+        : "";
+      return qs ? `/art/${slug}?${qs}` : `/art/${slug}`;
+    };
+    details.href = detailHrefForSlug(art.slug);
     details.textContent = "Details →";
     details.className = popupStyles.link;
     details.addEventListener("click", (e) => {
@@ -521,7 +551,7 @@ export function MapView({
         return;
       }
       e.preventDefault();
-      router.push(detailHref, {
+      routerRef.current.push(detailHrefForSlug(art.slug), {
         transitionTypes: ["nav-forward"],
       });
     });
@@ -586,19 +616,16 @@ export function MapView({
       if (mapRef.current !== map) return;
       if (!map.isStyleLoaded()) return;
 
-      // Subset list: move camera to the pin. Full catalog: keep the wide `fitBounds` — popup only.
-      if (!mapShowsFullCatalog) {
-        map.flyTo({
-          center: lngLat,
-          zoom: Math.max(map.getZoom(), 14),
-          padding: selectionFlyPadding(map),
-          retainPadding: false,
-          essential: true,
-          duration: 900,
-          curve: 1.5,
-          offset: [0, popupOuterH / 2],
-        });
-      }
+      map.flyTo({
+        center: lngLat,
+        zoom: Math.max(map.getZoom(), 14),
+        padding: selectionFlyPadding(map),
+        retainPadding: false,
+        essential: true,
+        duration: 900,
+        curve: 1.5,
+        offset: [0, popupOuterH / 2],
+      });
 
       const popup = new mapboxgl.Popup({
         anchor: "bottom",
@@ -644,15 +671,8 @@ export function MapView({
       popupRef.current?.remove();
       popupRef.current = null;
     };
-  }, [
-    artworks,
-    bounds,
-    homeQueryString,
-    mapReadyTick,
-    mapShowsFullCatalog,
-    selectedSlug,
-    router,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `artworks`/`bounds` via slugsKey/boundsKey; router ref
+  }, [artworksSlugsKey, boundsKey, mapReadyTick, mapShowsFullCatalog, selectedSlug]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

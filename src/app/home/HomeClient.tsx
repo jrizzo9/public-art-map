@@ -24,6 +24,7 @@ import {
   parseHomeFiltersFromUrlSearchParams,
   serializeHomeFiltersToQueryString,
   serializeHomeMapQueryString,
+  stripArtSlugFromQueryString,
 } from "./home-filter-url";
 import styles from "./home.module.css";
 
@@ -417,9 +418,15 @@ export function HomeClient({
    * while the server already parsed `initialFiltersFromUrl` — merge so pasted share links hydrate correctly.
    */
   const searchKey = searchParams.toString();
+  /** Facets/year/fs only — stable while `art=` is added or removed for the map preview. */
+  const filterUrlSearchKey = useMemo(
+    () => stripArtSlugFromQueryString(searchKey),
+    [searchKey],
+  );
+
   const urlFilters = useMemo((): HomeFiltersFromUrl => {
-    if (searchKey !== "") {
-      return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(searchKey));
+    if (filterUrlSearchKey !== "") {
+      return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(filterUrlSearchKey));
     }
     if (
       initialShareLinkHasFacetsOrYear(initialFiltersFromUrl) ||
@@ -428,12 +435,12 @@ export function HomeClient({
       return initialFiltersFromUrl;
     }
     return parseHomeFiltersFromUrlSearchParams(new URLSearchParams(""));
-  }, [searchKey, initialFiltersFromUrl]);
+  }, [filterUrlSearchKey, initialFiltersFromUrl]);
 
   const filterQueryString = useMemo(() => {
-    if (searchKey !== "") return searchKey;
+    if (searchKey !== "") return filterUrlSearchKey;
     return serializeHomeFiltersToQueryString(urlFilters);
-  }, [searchKey, urlFilters]);
+  }, [filterUrlSearchKey, searchKey, urlFilters]);
 
   const mapAndLinkQueryString = useMemo(() => {
     const p = new URLSearchParams(filterQueryString || "");
@@ -582,6 +589,12 @@ export function HomeClient({
     searchQuery,
   ]);
 
+  /** Stable when only `filtered` array identity churns — keeps selection sync from re-firing. */
+  const filteredSlugsKey = useMemo(
+    () => filtered.map((a) => a.slug).join("\0"),
+    [filtered],
+  );
+
   /** When the query string changes from history navigation, align year fields with `ymin` / `ymax`. */
   /* eslint-disable react-hooks/set-state-in-effect -- year inputs are local for typing; history navigation must rest them from the URL. */
   useEffect(() => {
@@ -601,23 +614,28 @@ export function HomeClient({
       mapAbsolute,
     );
     const nextQs = serializeHomeMapQueryString(desired, selectedSlug);
-    if (homeMapQueryStringsEqual(nextQs, mapAndLinkQueryString || "")) return;
+    // Compare to the real address bar — not `mapAndLinkQueryString`, which is derived from the same
+    // state as `nextQs`, so it was always "equal" and `router.replace` never ran (`art=` never appeared).
+    if (homeMapQueryStringsEqual(nextQs, searchKey)) return;
     const href = nextQs ? `${pathname}?${nextQs}` : pathname;
     router.replace(href, { scroll: false });
   }, [
     effectiveCategories,
     effectiveCommissions,
     effectiveCollections,
-    yearMin,
-    yearMax,
     mapAbsolute,
-    mapAndLinkQueryString,
     pathname,
     router,
+    searchKey,
     selectedSlug,
+    yearMax,
+    yearMin,
   ]);
 
-  /** Rewrite URL when facet pruning removes impossible chip keys (and after loading an outdated share link). */
+  /**
+   * Single URL sync — previously two effects both depended on `pushFilterUrl`, so one map click
+   * fired `pushFilterUrl()` twice (facet effect + selection effect), doubling `router.replace`.
+   */
   useEffect(() => {
     if (!mountMap) return;
     pushFilterUrl();
@@ -627,13 +645,8 @@ export function HomeClient({
     effectiveCommissions,
     effectiveCollections,
     pushFilterUrl,
+    selectedSlug,
   ]);
-
-  /** Keep `art=` in the address bar in sync with the highlighted list row / map preview. */
-  useEffect(() => {
-    if (!mountMap) return;
-    pushFilterUrl();
-  }, [mountMap, selectedSlug, pushFilterUrl]);
 
   /** Debounce year typing so we don’t rewrite the URL on every keystroke. */
   useEffect(() => {
@@ -842,7 +855,9 @@ export function HomeClient({
     if (prevFilterDriveKeyRef.current === key) {
       const inList =
         selectedSlug != null && filtered.some((a) => a.slug === selectedSlug);
-      if (!inList && filtered.length > 0) {
+      // Only recover a stale row selection — do not re-pick the first item when the user cleared
+      // preview (map background / popup ×); MapView will refit bounds for the empty selection.
+      if (selectedSlug != null && !inList && filtered.length > 0) {
         setSelectedSlug(filtered[0]!.slug);
       }
       return;
@@ -851,12 +866,13 @@ export function HomeClient({
     prevFilterDriveKeyRef.current = key;
     const first = filtered[0];
     setSelectedSlug(first ? first.slug : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `filtered` keyed by `filteredSlugsKey` to avoid URL `art=` churn
   }, [
     mountMap,
     filterDriveSelectionKey,
-    filtered,
-    selectedSlug,
+    filteredSlugsKey,
     listRefinementActive,
+    selectedSlug,
   ]);
   /* eslint-enable react-hooks/set-state-in-effect */
 

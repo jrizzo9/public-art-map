@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Home `art=` in the address bar:** compare `router.replace` deduping to the **real** query string so `art=<slug>` actually syncs when you select a list row or map marker.
+- **Map preview flicker / double URL updates:** merge the two **`pushFilterUrl` effects** into one so a single selection does not fire **`router.replace` twice**; derive facet state from the query string **with `art` stripped** so syncing **`art=`** does not rebuild **`filtered`** and retrigger map effects.
+- **Selection sync after closing the popup:** when filters are on, clearing preview no longer immediately **re-selects the first row** (treat “no selection” separately from “stale slug not in list”).
+- **Map popup teardown:** keep **`homeQueryString`** off the popup effect dependency list and read it from a **ref** so URL-only updates do not remove and rebuild the popup for the same artwork.
+- **Map camera:** skip redundant **`fitBounds`** when only **`selectedSlug`** changes (including full-catalog mode) so **`flyTo`** is not cancelled; when you **close** the preview (**×** or map background), run an **animated** **`fitBounds`** back to all markers for the current filter (commit preview ref after fit so debounced re-renders do not drop the zoom-out).
+- **Stable map effect deps:** use **`artworksSlugsKey`** / **`boundsKey`** and a **`router` ref** for the popup so referential churn does not constantly recreate the Mapbox popup.
+
+### Changed
+
+- **`stripArtSlugFromQueryString`** in **`home-filter-url.ts`** to support facet parsing without **`art=`** churn.
+- **Filter-selection sync effect** depends on **`filteredSlugsKey`** instead of **`filtered`** identity alone.
+- **`SiteBrandBar`** / **`SiteNavigation`:** add **`data-site-brand-bar`** and **`data-site-nav`** hooks for tests or automation.
+
 ## [0.2.0] - 2026-04-24
 
 ### Added

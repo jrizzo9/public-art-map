@@ -137,6 +137,17 @@ export function serializeHomeMapQueryString(
   return p.toString();
 }
 
+/**
+ * Drop `art` from the query string so facet/year state does not re-derive when only the map preview
+ * slug syncs to the URL (avoids redundant `filtered` / map effect churn).
+ */
+export function stripArtSlugFromQueryString(qs: string): string {
+  if (!qs.trim()) return "";
+  const p = new URLSearchParams(qs);
+  p.delete("art");
+  return p.toString();
+}
+
 /** Order-independent compare for `router.replace` deduping. */
 export function homeMapQueryStringsEqual(a: string, b: string): boolean {
   const norm = (qs: string) => {
