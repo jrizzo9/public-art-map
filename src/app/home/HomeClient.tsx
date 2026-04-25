@@ -377,6 +377,23 @@ export function HomeClient({
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(() =>
     resolveInitialSelectedSlug(artworks, initialFiltersFromUrl, initialArtSlug),
   );
+  /**
+   * Bumps when map/list preview goes from a slug → none so `MapView` can refit even if internal
+   * refs/effect ordering miss the transition.
+   */
+  const [previewClosedSignal, setPreviewClosedSignal] = useState(0);
+  const prevSelectedSlugForMapSignalRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const prev = prevSelectedSlugForMapSignalRef.current;
+    if (
+      typeof prev === "string" &&
+      prev.length > 0 &&
+      selectedSlug === undefined
+    ) {
+      setPreviewClosedSignal((n) => n + 1);
+    }
+    prevSelectedSlugForMapSignalRef.current = selectedSlug;
+  }, [selectedSlug]);
   const [hoveredSlug, setHoveredSlug] = useState<string | undefined>(undefined);
   const [filtersOpen, setFiltersOpen] = useState(false);
   /** Mount map for `fs=1` or any shareable facet/year params from the server (see `page.tsx`). */
@@ -1029,6 +1046,7 @@ export function HomeClient({
                   onClearSelection={onClearSelection}
                   styleUrl={mapboxStyleUrl}
                   homeQueryString={mapAndLinkQueryString}
+                  previewClosedSignal={previewClosedSignal}
                   mapShowsFullCatalog={
                     artworks.length > 0 && filtered.length === artworks.length
                   }
