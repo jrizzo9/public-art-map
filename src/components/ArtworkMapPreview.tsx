@@ -22,6 +22,23 @@ const PANEL = "[data-home-artwork-panel]";
 const PREVIEW_MAX_CAP = 680;
 const MIN_PREVIEW_PX = 200;
 const VIEWPORT_MARGIN_PX = 12;
+const CENTER_PANEL_HPAD = 16;
+
+function computeCenteredAnchorPx(): { left: number; top: number } {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const panel = document.querySelector<HTMLElement>(PANEL);
+  if (!panel) return { left: vw / 2, top: vh / 2 };
+
+  const p = panel.getBoundingClientRect();
+  // If the panel is a bottom sheet (nearly full width), center normally.
+  if (p.width > vw * 0.86) return { left: vw / 2, top: vh / 2 };
+
+  const leftEdge = Math.min(vw, Math.max(0, p.right + CENTER_PANEL_HPAD));
+  const rightEdge = vw - CENTER_PANEL_HPAD;
+  const availW = Math.max(0, rightEdge - leftEdge);
+  return { left: leftEdge + availW / 2, top: vh / 2 };
+}
 
 /**
  * Map container spans the full map card, but the list is a left overlay. Cap preview width
@@ -79,7 +96,6 @@ export function ArtworkMapPreview({
 }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const lngLat = useMemo((): [number, number] => [art.lng, art.lat], [art.lng, art.lat]);
 
   const sizeRef = useRef({ w: 0, h: 0 });
   const [pos, setPos] = useState({ left: 0, top: 0, maxW: PREVIEW_MAX_CAP });
@@ -112,10 +128,7 @@ export function ArtworkMapPreview({
       raf = requestAnimationFrame(() => {
         raf = 0;
         try {
-          const p = map.project(lngLat);
-          const r = map.getContainer().getBoundingClientRect();
-          const left = r.left + p.x;
-          const top = r.top + p.y;
+          const { left, top } = computeCenteredAnchorPx();
           const maxW = computePreviewMaxWidthPx(map);
 
           // Deterministic viewport clamp (no oscillation while the map is animating).
@@ -128,7 +141,7 @@ export function ArtworkMapPreview({
 
             const rectLeft = left - w / 2;
             const rectRight = rectLeft + w;
-            const rectTop = top - h + popupOffsetY;
+            const rectTop = top - h / 2;
             const rectBottom = rectTop + h;
 
             if (rectLeft < VIEWPORT_MARGIN_PX) dx += VIEWPORT_MARGIN_PX - rectLeft;
@@ -174,7 +187,7 @@ export function ArtworkMapPreview({
       window.removeEventListener("scroll", tick, true);
       window.removeEventListener("resize", tick);
     };
-  }, [map, lngLat]);
+  }, [map, popupOffsetY]);
 
   const primaryImage = art.image ?? art.images?.[0];
 
@@ -203,7 +216,7 @@ export function ArtworkMapPreview({
         boxSizing: "border-box",
         zIndex: 60,
         pointerEvents: "auto",
-        transform: `translate(calc(-50% + ${nudge.x}px), calc(-100% + ${popupOffsetY}px + ${nudge.y}px))`,
+        transform: `translate(calc(-50% + ${nudge.x}px), calc(-50% + ${nudge.y}px))`,
         willChange: "transform",
         opacity: shown ? 1 : 0,
         transition: "opacity 160ms ease",
