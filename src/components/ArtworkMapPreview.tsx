@@ -16,6 +16,8 @@ type Props = {
   onSelectSlug: (slug: string) => void;
   /** Matches Mapbox popup offset tuning (narrow vs wide). */
   popupOffsetY: number;
+  /** Optional: report where the arrow tip is in viewport pixels (for camera alignment). */
+  onArrowTipViewport?: (pt: { x: number; y: number } | null) => void;
 };
 
 const PANEL = "[data-home-artwork-panel]";
@@ -23,6 +25,8 @@ const PREVIEW_MAX_CAP = 680;
 const MIN_PREVIEW_PX = 200;
 const VIEWPORT_MARGIN_PX = 12;
 const CENTER_PANEL_HPAD = 16;
+const CENTER_Y_NUDGE_PX = 18;
+const ARROW_GAP_PX = 10;
 
 function computeCenteredAnchorPx(): { left: number; top: number } {
   const vw = window.innerWidth;
@@ -37,7 +41,7 @@ function computeCenteredAnchorPx(): { left: number; top: number } {
   const leftEdge = Math.min(vw, Math.max(0, p.right + CENTER_PANEL_HPAD));
   const rightEdge = vw - CENTER_PANEL_HPAD;
   const availW = Math.max(0, rightEdge - leftEdge);
-  return { left: leftEdge + availW / 2, top: vh / 2 };
+  return { left: leftEdge + availW / 2, top: vh / 2 - CENTER_Y_NUDGE_PX };
 }
 
 /**
@@ -93,6 +97,7 @@ export function ArtworkMapPreview({
   onClose,
   onSelectSlug,
   popupOffsetY,
+  onArrowTipViewport,
 }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +195,20 @@ export function ArtworkMapPreview({
   }, [map, popupOffsetY]);
 
   const primaryImage = art.image ?? art.images?.[0];
+
+  // Provide arrow tip coordinates so the map can keep the selected dot directly underneath.
+  useEffect(() => {
+    if (!onArrowTipViewport) return;
+    const { w, h } = sizeRef.current;
+    if (!shown || w <= 0 || h <= 0) {
+      onArrowTipViewport(null);
+      return;
+    }
+    // Card is centered at (pos.left,pos.top) with translate(-50%,-50%).
+    const tipX = pos.left + nudge.x;
+    const tipY = pos.top + nudge.y + h / 2 + ARROW_GAP_PX;
+    onArrowTipViewport({ x: tipX, y: tipY });
+  }, [onArrowTipViewport, pos.left, pos.top, nudge.x, nudge.y, shown]);
 
   const { prevSlug, nextSlug } = useMemo(() => {
     if (artworks.length <= 1) return { prevSlug: null as string | null, nextSlug: null as string | null };
@@ -327,6 +346,7 @@ export function ArtworkMapPreview({
           </a>
         ) : null}
       </div>
+      <div className={popupStyles.previewArrow} aria-hidden />
     </div>
   );
 }

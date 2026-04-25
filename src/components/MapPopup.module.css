@@ -191,6 +191,19 @@
   margin-top: 10px;
 }
 
+.previewArrow {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--card);
+  border-right: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+  box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.18);
+}
+
 .link {
   font-size: 12px;
   text-decoration: underline;

@@ -56,6 +56,13 @@ function selectionFlyPadding(map: MapboxMap) {
 /** Vertical `flyTo` offset (px) — preview card is portaled, not a Mapbox popup. */
 const PREVIEW_FLYTO_OFFSET_Y = 150;
 
+function computeOffsetFromViewportPoint(map: MapboxMap, pt: { x: number; y: number }) {
+  const r = map.getContainer().getBoundingClientRect();
+  const xIn = pt.x - r.left;
+  const yIn = pt.y - r.top;
+  return [xIn - r.width / 2, yIn - r.height / 2] as [number, number];
+}
+
 type Props = {
   artworks: Artwork[];
   selectedSlug?: string;
@@ -552,6 +559,33 @@ export function MapView({
   }, [artworksSlugsKey, boundsKey, mapReadyTick, mapShowsFullCatalog, selectedSlug]);
 
   const mapForPortal = mapRef.current;
+  const [previewArrowTipViewport, setPreviewArrowTipViewport] = useState<
+    { x: number; y: number } | null
+  >(null);
+
+  // Keep the selected dot under the preview arrow tip.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!selectedSlug) return;
+    if (!previewArrowTipViewport) return;
+    const art = artworks.find((a) => a.slug === selectedSlug);
+    if (!art || !Number.isFinite(art.lat) || !Number.isFinite(art.lng)) return;
+    if (!map.isStyleLoaded()) return;
+    try {
+      map.easeTo({
+        center: [art.lng, art.lat],
+        zoom: Math.max(map.getZoom(), 14),
+        padding: selectionFlyPadding(map),
+        retainPadding: false,
+        essential: true,
+        duration: 0,
+        offset: computeOffsetFromViewportPoint(map, previewArrowTipViewport),
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [artworksSlugsKey, previewArrowTipViewport, selectedSlug]);
 
   return (
     <>
@@ -567,6 +601,7 @@ export function MapView({
             homeQueryString={homeQueryString ?? ""}
             onClose={() => onClearSelectionRef.current?.()}
             onSelectSlug={(slug) => onSelectSlugRef.current?.(slug)}
+            onArrowTipViewport={setPreviewArrowTipViewport}
             popupOffsetY={
               mapForPortal.getContainer().getBoundingClientRect().width < 640 ? -68 : -18
             }
