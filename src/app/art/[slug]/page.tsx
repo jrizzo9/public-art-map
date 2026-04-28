@@ -11,6 +11,11 @@ import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "../art-detail-shell.module.css";
 import nearbyStyles from "../nearby-art.module.css";
 import Image from "next/image";
+import {
+  artworkDocumentTitle,
+  artworkMetaDescriptionFull,
+  truncateMetaDescription,
+} from "@/lib/artwork-metadata";
 import { SITE_ORG_NAME, SITE_PRODUCT_NAME } from "@/lib/site";
 import { filterArtworksByHomeUrlQuery } from "@/lib/home-filter-match";
 
@@ -27,24 +32,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const siteUrl = env.NEXT_PUBLIC_SITE_URL();
   const url = new URL(`/art/${artwork.slug}`, siteUrl).toString();
-  const description = artwork.description?.slice(0, 160) || "Public art detail page.";
-  const ogDescription =
-    artwork.description?.slice(0, 200) || "Public art detail page.";
+  const fullDescription = artworkMetaDescriptionFull(artwork);
+  const description = truncateMetaDescription(fullDescription, 160);
+  const ogDescription = truncateMetaDescription(fullDescription, 200);
+  const pageTitle = artworkDocumentTitle(artwork);
 
   return {
-    title: artwork.title,
+    title: { absolute: pageTitle },
     description,
     alternates: { canonical: url },
     openGraph: {
       type: "article",
-      title: artwork.title,
+      title: pageTitle,
       description: ogDescription,
       url,
       images: artwork.image ? [{ url: artwork.image }] : undefined,
     },
     twitter: {
       card: artwork.image ? "summary_large_image" : "summary",
-      title: artwork.title,
+      title: pageTitle,
       description,
       images: artwork.image ? [artwork.image] : undefined,
     },

@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Artwork SEO (`/art/[slug]`):** document titles use **`{title} - {artist} - Waco Public Art Map`** (absolute title; artist segment omitted when blank); meta descriptions combine **category, year,** and **description** from the sheet, with sensible fallbacks. Open Graph/Twitter titles match. **`/embed/art/[slug]`** uses the same title pattern for the `<title>` tag (still **noindex**).
 - **Home map camera:** animate the **first** **`fitBounds`** overview for a **narrowed** list when no artwork is selected (same easing as the full-catalog overview).
 - **`stripArtSlugFromQueryString`** in **`home-filter-url.ts`** to support facet parsing without **`art=`** churn.
 - **Filter-selection sync effect** depends on **`filteredSlugsKey`** instead of **`filtered`** identity alone.

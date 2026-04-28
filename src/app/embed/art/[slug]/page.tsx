@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtworkDetail } from "@/components/ArtworkDetail";
 import { env } from "@/lib/env";
+import { artworkDocumentTitle } from "@/lib/artwork-metadata";
 import { SITE_PRODUCT_NAME } from "@/lib/site";
 import { getArtworkBySlug } from "@/lib/sheet";
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonical = new URL(`/art/${artwork.slug}`, siteUrl).toString();
 
   return {
-    title: artwork.title,
+    title: { absolute: artworkDocumentTitle(artwork) },
     robots: { index: false, follow: true },
     alternates: { canonical },
   };
