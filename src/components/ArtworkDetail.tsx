@@ -9,9 +9,17 @@ type Props = {
   variant?: "full" | "embed" | "panel";
   prevHref?: string;
   nextHref?: string;
+  /** When set, Collection field links to `/collections/[slug]`. */
+  collectionDetailHref?: string;
 };
 
-export function ArtworkDetail({ artwork, variant = "full", prevHref, nextHref }: Props) {
+export function ArtworkDetail({
+  artwork,
+  variant = "full",
+  prevHref,
+  nextHref,
+  collectionDetailHref,
+}: Props) {
   const primaryImage = artwork.image ?? artwork.images?.[0];
 
   return (
@@ -104,7 +112,19 @@ export function ArtworkDetail({ artwork, variant = "full", prevHref, nextHref }:
             {artwork.collection ? (
               <div>
                 <dt>Collection</dt>
-                <dd>{artwork.collection}</dd>
+                <dd>
+                  {collectionDetailHref ? (
+                    <Link
+                      href={collectionDetailHref}
+                      className={styles.collectionLink}
+                      transitionTypes={["nav-forward"]}
+                    >
+                      {artwork.collection}
+                    </Link>
+                  ) : (
+                    artwork.collection
+                  )}
+                </dd>
               </div>
             ) : null}
           </dl>

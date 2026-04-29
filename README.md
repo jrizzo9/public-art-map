@@ -3,6 +3,8 @@
 Next.js app that renders:
 - **Full map experience** at `/`
 - **Artwork directory** at `/art` (search + category filter + sort)
+- **Collections index** at `/collections` (search + open collection pages)
+- **Collection map pages** at `/collections/[slug]` (fullscreen map + bottom carousel)
 - **SEO detail pages** at `/art/[slug]`
 - **Public submission** intake at `/submit`
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
@@ -21,6 +23,7 @@ Data comes from a **published Google Sheet CSV** (no Google credentials required
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~30% of the viewport) for the panel. Same camera rules as desktop: **overview `fitBounds`** when nothing is selected, **`flyTo`** when a pin is selected (including narrowed lists), **overview again** after clearing the preview. **`art=`** tracks selection without re-running facet derivation for unrelated churn.
 - **Search + filters:** the panel includes a **search bar** (refines map + list) and a toggle button that switches the panel between **Filters** and **List** modes (only one visible at a time). Filters include **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range. **Active filters are reflected in the URL** (query keys `cat`, `comm`, `coll`, `ymin`, `ymax`, plus **`fs=1`** when the map is in full-viewport mode, and optional **`art=<slug>`** for the selected artwork) for sharing and browser history; opening a pasted link restores that state on first load. Facet values in the query string are compared case-insensitively, and **`+`** is treated like a space so encoded names (e.g. multi-word collections) still match the sheet.
 - **Single-collection mode:** when exactly one **collection** chip is selected, the panel shows a short **Curated collection by** line and the **Creative Waco** logo under the list.
+- **Collections routes:** `/collections` lists all collection groupings from the sheet (with search). `/collections/[slug]` opens a collection-first fullscreen map with a bottom artwork carousel, prev/next collection controls, and detail links that preserve collection map context.
 - **Exit fullscreen map:** when the map is expanded to full viewport, an **Exit map** button appears and **Escape** exits as well.
 - Choosing an artwork from the list row (main hit target) or from a map dot opens a **preview card** (rendered above the map, with the **map area dimmed**) showing the title, **artist/year** (when available), an image preview that shows the **full photo** (no crop), and **Details →**. The card includes a small **arrow** pointing to the selected location, and the map camera keeps the selected dot aligned under it (smooth `flyTo`). Each row has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the preview. Artwork detail pages also include a **Nearby art** section (sorted by distance) to jump to nearby works; thumbnails show the **full photo** (no crop).
 - Click empty map area to clear the preview selection.

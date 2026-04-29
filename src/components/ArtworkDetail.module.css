@@ -163,3 +163,14 @@
   white-space: pre-line;
 }
 
+.collectionLink {
+  color: color-mix(in oklch, var(--primary) 82%, var(--card-foreground));
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.collectionLink:hover {
+  color: color-mix(in oklch, var(--primary) 92%, var(--card-foreground));
+}
+

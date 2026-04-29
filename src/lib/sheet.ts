@@ -54,7 +54,8 @@ const rawArtworkSchema = z.object({
 
 const geocodeCache = new Map<string, LatLng | null>();
 
-function slugify(input: string): string {
+/** URL-safe slug (artwork slugs, collection routes, etc.). */
+export function slugify(input: string): string {
   return input
     .trim()
     .toLowerCase()

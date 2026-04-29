@@ -24,14 +24,26 @@ const FIT_BOUNDS_DURATION_MS = 1150;
 /** Coalesce rapid filter tweaks (e.g. year typing) into one camera move. */
 const FIT_BOUNDS_DEBOUNCE_MS = 320;
 
+export type MapChromeVariant = "home" | "collection";
+
 /** Padding so markers / bounds stay in the visible map area (not under the floating panel or bottom sheet). */
-function mapChromePadding(map: MapboxMap) {
+function mapChromePadding(map: MapboxMap, variant: MapChromeVariant = "home") {
   const { width: w, height: h } = map.getContainer().getBoundingClientRect();
   if (!w || !h) {
-    return { top: 48, right: 32, bottom: 120, left: 360 };
+    return variant === "collection"
+      ? { top: 96, right: 16, bottom: 28, left: 16 }
+      : { top: 48, right: 32, bottom: 120, left: 360 };
   }
 
   const isNarrow = w < 640;
+
+  if (variant === "collection") {
+    /** Map fills only the stage above the carousel (`CollectionMapClient`); footer is outside this container. */
+    const top = Math.max(96, Math.round(h * 0.11));
+    const bottom = Math.max(20, Math.round(h * 0.04));
+    const side = Math.max(12, Math.round(w * 0.03));
+    return { top, right: side, bottom, left: side };
+  }
 
   if (isNarrow) {
     const bottom = Math.round(h * MOBILE_SHEET_HEIGHT_RATIO);
@@ -49,8 +61,8 @@ function mapChromePadding(map: MapboxMap) {
   return { top, right, bottom, left };
 }
 
-function selectionFlyPadding(map: MapboxMap) {
-  return mapChromePadding(map);
+function selectionFlyPadding(map: MapboxMap, variant: MapChromeVariant = "home") {
+  return mapChromePadding(map, variant);
 }
 
 /** Vertical `flyTo` offset (px) — preview card is portaled, not a Mapbox popup. */
@@ -89,6 +101,8 @@ type Props = {
    * still uses `flyTo`; we skip redundant `fitBounds` when only `selectedSlug` changes.
    */
   mapShowsFullCatalog?: boolean;
+  /** Map chrome padding: home = list panel left / mobile sheet; collection = bottom carousel strip. */
+  chromeVariant?: MapChromeVariant;
 };
 
 export function MapView({
@@ -101,6 +115,7 @@ export function MapView({
   homeQueryString,
   previewClosedSignal = 0,
   mapShowsFullCatalog = false,
+  chromeVariant = "home",
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   type MapboxModule = typeof import("mapbox-gl");
@@ -350,7 +365,7 @@ export function MapView({
       // view stays zoomed on the closed preview.
       if (selectionJustCleared) map.stop();
       map.fitBounds(bounds, {
-        padding: mapChromePadding(map),
+        padding: mapChromePadding(map, chromeVariant),
         duration: fitDuration,
         maxZoom: 15,
         essential: true,
@@ -395,6 +410,7 @@ export function MapView({
   }, [
     artworksSlugsKey,
     boundsKey,
+    chromeVariant,
     mapReadyTick,
     mapShowsFullCatalog,
     previewClosedSignal,
@@ -535,7 +551,7 @@ export function MapView({
       map.flyTo({
         center: lngLat,
         zoom: Math.max(map.getZoom(), 14),
-        padding: selectionFlyPadding(map),
+        padding: selectionFlyPadding(map, chromeVariant),
         retainPadding: false,
         essential: true,
         duration: 900,
@@ -574,7 +590,14 @@ export function MapView({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `artworks`/`bounds` via slugsKey/boundsKey
-  }, [artworksSlugsKey, boundsKey, mapReadyTick, mapShowsFullCatalog, selectedSlug]);
+  }, [
+    artworksSlugsKey,
+    boundsKey,
+    chromeVariant,
+    mapReadyTick,
+    mapShowsFullCatalog,
+    selectedSlug,
+  ]);
 
   const mapForPortal = mapRef.current;
   const [previewArrowTipViewport, setPreviewArrowTipViewport] = useState<
@@ -591,7 +614,7 @@ export function MapView({
     if (!art || !Number.isFinite(art.lat) || !Number.isFinite(art.lng)) return;
     if (!map.isStyleLoaded()) return;
     try {
-      const padding = selectionFlyPadding(map);
+      const padding = selectionFlyPadding(map, chromeVariant);
       map.easeTo({
         center: [art.lng, art.lat],
         zoom: Math.max(map.getZoom(), 14),
@@ -605,7 +628,7 @@ export function MapView({
     } catch {
       /* ignore */
     }
-  }, [artworksSlugsKey, previewArrowTipViewport, selectedSlug]);
+  }, [artworksSlugsKey, chromeVariant, previewArrowTipViewport, selectedSlug]);
 
   // Portaled "selected dot" so it's visible above the dim overlay and card.
   const [selectedDotPos, setSelectedDotPos] = useState<{ left: number; top: number } | null>(null);
@@ -686,6 +709,7 @@ export function MapView({
               onClose={() => onClearSelectionRef.current?.()}
               onSelectSlug={(slug) => onSelectSlugRef.current?.(slug)}
               onArrowTipViewport={setPreviewArrowTipViewport}
+              anchorVariant={chromeVariant === "collection" ? "collection" : "home"}
               popupOffsetY={
                 mapForPortal.getContainer().getBoundingClientRect().width < 640 ? -68 : -18
               }

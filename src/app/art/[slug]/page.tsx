@@ -18,6 +18,7 @@ import {
 } from "@/lib/artwork-metadata";
 import { SITE_ORG_NAME, SITE_PRODUCT_NAME } from "@/lib/site";
 import { filterArtworksByHomeUrlQuery } from "@/lib/home-filter-match";
+import { buildCollectionSlugMaps } from "@/lib/collection-routes";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -72,6 +73,13 @@ export default async function ArtPage({ params, searchParams }: Props) {
   }
 
   const filtered = filterArtworksByHomeUrlQuery(artworks, qs);
+
+  const { nameToSlug } = buildCollectionSlugMaps(artworks);
+  const collTrim = artwork.collection?.trim();
+  const collectionDetailHref =
+    collTrim && nameToSlug.has(collTrim)
+      ? `/collections/${nameToSlug.get(collTrim)!}`
+      : undefined;
 
   const pool = filtered.some((a) => a.slug === artwork.slug) ? filtered : artworks;
   const idx = Math.max(0, pool.findIndex((a) => a.slug === artwork.slug));
@@ -180,7 +188,13 @@ export default async function ArtPage({ params, searchParams }: Props) {
           default="none"
         >
           <div className={shellStyles.panelInner}>
-            <ArtworkDetail artwork={artwork} variant="panel" prevHref={prevHref} nextHref={nextHref} />
+            <ArtworkDetail
+              artwork={artwork}
+              variant="panel"
+              prevHref={prevHref}
+              nextHref={nextHref}
+              collectionDetailHref={collectionDetailHref}
+            />
           </div>
         </ViewTransition>
       </main>

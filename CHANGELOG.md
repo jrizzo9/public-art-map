@@ -10,9 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`ArtworkMapPreview`** (`src/components/ArtworkMapPreview.tsx`): portaled **map selection preview** for the home map (title, image, prev/next, links) positioned from the map projection and sized to the available map column.
+- **Collections browsing routes:** add `/collections` index and `/collections/[slug]` fullscreen map pages with collection metadata, JSON-LD, and slug-stable routing from sheet collection names.
+- **Collection map experience:** add a bottom artwork carousel, previous/next collection controls, and map/detail link context that preserves the selected collection via `coll=` query state.
 
 ### Fixed
 
+- **Collections index cards:** remove the secondary **View on map** link so each card has a single primary action and cleaner vertical spacing.
 - **Home `art=` in the address bar:** compare `router.replace` deduping to the **real** query string so `art=<slug>` actually syncs when you select a list row or map marker.
 - **Map preview flicker / double URL updates:** merge the two **`pushFilterUrl` effects** into one so a single selection does not fire **`router.replace` twice**; derive facet state from the query string **with `art` stripped** so syncing **`art=`** does not rebuild **`filtered`** and retrigger map effects.
 - **Map popup teardown:** keep **`homeQueryString`** off the popup effect dependency list and read it from a **ref** so URL-only updates do not remove and rebuild the popup for the same artwork.
@@ -26,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Collection map layout:** tune fullscreen map/footer spacing and clamp preview bounds so the selected artwork card stays clear of the top/bottom chrome while keeping marker-arrow alignment.
 - **Artwork SEO (`/art/[slug]`):** document titles use **`{title} - {artist} - Waco Public Art Map`** (absolute title; artist segment omitted when blank); meta descriptions combine **category, year,** and **description** from the sheet, with sensible fallbacks. Open Graph/Twitter titles match. **`/embed/art/[slug]`** uses the same title pattern for the `<title>` tag (still **noindex**).
 - **Home map camera:** animate the **first** **`fitBounds`** overview for a **narrowed** list when no artwork is selected (same easing as the full-catalog overview).
 - **`stripArtSlugFromQueryString`** in **`home-filter-url.ts`** to support facet parsing without **`art=`** churn.

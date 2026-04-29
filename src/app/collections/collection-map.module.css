@@ -1,0 +1,341 @@
+/* Full-viewport map + bottom carousel (collection experience) */
+
+/* Definite height so flex children + Mapbox `height: 100%` resolve (min-height alone often collapses the map). */
+.root {
+  box-sizing: border-box;
+  min-height: 100svh;
+  min-height: 100dvh;
+  height: 100svh;
+  height: 100dvh;
+  width: 100%;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  overflow: hidden;
+}
+
+.mapStage {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.floatingBar {
+  position: absolute;
+  z-index: 25;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  top: max(52px, calc(env(safe-area-inset-top, 0px) + 44px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  pointer-events: none;
+}
+
+.floatingBar > * {
+  pointer-events: auto;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--border) 88%, transparent);
+  background: color-mix(in oklch, var(--card) 78%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in oklch, var(--foreground) 90%, transparent);
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.backLink:hover {
+  border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+}
+
+/* One strip: title / count / nav + curator — shares footer panel, no nested card */
+.collectionSummary {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  max-width: min(1100px, 100%);
+  margin-inline: auto;
+  width: 100%;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+}
+
+.summaryLead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+@media (max-width: 719px) {
+  .collectionSummary .curatorRow {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 720px) {
+  .collectionSummary {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px 24px;
+  }
+
+  .summaryLead {
+    flex: 1;
+    min-width: min(100%, 320px);
+  }
+
+  .collectionSummary .curatorRow {
+    flex-shrink: 0;
+    justify-content: flex-end;
+  }
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.count {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.collectionNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.collectionNav a {
+  color: color-mix(in oklch, var(--primary) 75%, var(--foreground));
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.collectionNav a:hover {
+  text-decoration: underline;
+}
+
+.mapPreviewBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mapPreviewBackdropVisible {
+  opacity: 1;
+}
+
+.mapFill {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  z-index: 5;
+}
+
+.bottomChrome {
+  flex-shrink: 0;
+  z-index: 20;
+  padding: 12px max(14px, env(safe-area-inset-right, 0px))
+    max(12px, env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
+  border-top: 1px solid color-mix(in oklch, var(--border) 75%, transparent);
+  background: color-mix(in oklch, var(--card) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.carouselRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  max-width: min(1100px, 100%);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.carouselArrow {
+  flex-shrink: 0;
+  width: 40px;
+  min-height: 100px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+  background: color-mix(in oklch, var(--card) 88%, transparent);
+  color: var(--foreground);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.carouselArrow:hover {
+  border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
+
+.carouselArrow:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
+}
+
+.carouselScroller {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 4px;
+  padding: 4px 2px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.carouselScroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.carouselScroller::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+  border-radius: 999px;
+}
+
+.carouselCard {
+  flex: 0 0 auto;
+  width: min(132px, 28vw);
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 6px 12px;
+  margin: 0;
+  border: 2px solid transparent;
+  border-radius: calc(var(--radius) + 4px);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.14s ease, background 0.14s ease;
+  box-sizing: border-box;
+}
+
+.carouselCard:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px color-mix(in oklch, var(--card) 98%, transparent),
+    0 0 0 4px color-mix(in oklch, var(--ring) 55%, transparent);
+}
+
+.carouselCardSelected {
+  border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklch, var(--border) 82%, transparent);
+  background: color-mix(in oklch, var(--muted) 30%, var(--card));
+}
+
+.thumb :global(img) {
+  object-fit: cover;
+}
+
+.thumbImg {
+  object-fit: cover;
+  object-position: center;
+}
+
+.thumbFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.cardLabel {
+  margin: 0;
+  padding: 0 2px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--foreground);
+}
+
+.curatorRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 14px;
+}
+
+.curatorLabel {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+}
+
+.curatorLogo {
+  height: 28px !important;
+  width: auto !important;
+  max-width: 140px;
+  object-fit: contain;
+}

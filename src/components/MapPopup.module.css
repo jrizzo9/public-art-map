@@ -7,6 +7,23 @@
   font-size: 13px;
 }
 
+/* Collection map: keep preview readable under SiteBrandBar + floating bar + bottom strip */
+.popupRoot[data-anchor-variant="collection"] {
+  max-width: min(400px, calc(100vw - 24px));
+}
+
+.popupRoot[data-anchor-variant="collection"] .image,
+.popupRoot[data-anchor-variant="collection"] .imageFrame .image {
+  max-height: min(28vh, 220px);
+}
+
+@media (max-width: 640px) {
+  .popupRoot[data-anchor-variant="collection"] .image,
+  .popupRoot[data-anchor-variant="collection"] .imageFrame .image {
+    max-height: min(24vh, 180px);
+  }
+}
+
 .topRow {
   display: flex;
   /* Short titles + tall close used to leave dead space above `.meta`; align bottoms. */

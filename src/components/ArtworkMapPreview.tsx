@@ -18,18 +18,57 @@ type Props = {
   popupOffsetY: number;
   /** Optional: report where the arrow tip is in viewport pixels (for camera alignment). */
   onArrowTipViewport?: (pt: { x: number; y: number } | null) => void;
+  /** `collection`: anchor preview in map area above `[data-collection-bottom-chrome]`. */
+  anchorVariant?: "home" | "collection";
 };
 
 const PANEL = "[data-home-artwork-panel]";
+const COLLECTION_MAP_VIEWPORT = "[data-collection-map-viewport]";
+const COLLECTION_FLOATING_BAR = "[data-collection-floating-bar]";
+const COLLECTION_BOTTOM = "[data-collection-bottom-chrome]";
 const PREVIEW_MAX_CAP = 680;
+/** Narrower card on collection routes so preview doesn’t fight top chrome + carousel. */
+const COLLECTION_PREVIEW_MAX_CAP = 400;
 const MIN_PREVIEW_PX = 200;
 const VIEWPORT_MARGIN_PX = 12;
 const CENTER_PANEL_HPAD = 16;
 const CENTER_Y_NUDGE_PX = 18;
 
-function computeCenteredAnchorPx(): { left: number; top: number } {
+/** Visible map band on collection page (map container minus overlap from absolute floating bar). */
+function getCollectionMapContentBounds():
+  | { left: number; top: number; right: number; bottom: number }
+  | null {
+  const vp = document.querySelector<HTMLElement>(COLLECTION_MAP_VIEWPORT);
+  if (!vp) return null;
+  const r = vp.getBoundingClientRect();
+  const bar = document.querySelector<HTMLElement>(COLLECTION_FLOATING_BAR);
+  let top = r.top;
+  if (bar) {
+    const br = bar.getBoundingClientRect();
+    top = Math.max(r.top, br.bottom + 6);
+  }
+  return { left: r.left, top, right: r.right, bottom: r.bottom };
+}
+
+function computeCenteredAnchorPx(
+  anchorVariant: "home" | "collection",
+): { left: number; top: number } {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+
+  if (anchorVariant === "collection") {
+    const b = getCollectionMapContentBounds();
+    if (b) {
+      const cx = (b.left + b.right) / 2;
+      const cy = b.top + (b.bottom - b.top) / 2;
+      return { left: cx, top: cy };
+    }
+    const chrome = document.querySelector<HTMLElement>(COLLECTION_BOTTOM);
+    if (!chrome) return { left: vw / 2, top: vh * 0.36 };
+    const topEdge = chrome.getBoundingClientRect().top;
+    return { left: vw / 2, top: Math.max(56, topEdge * 0.45) };
+  }
+
   const panel = document.querySelector<HTMLElement>(PANEL);
   if (!panel) return { left: vw / 2, top: vh / 2 };
 
@@ -47,10 +86,20 @@ function computeCenteredAnchorPx(): { left: number; top: number } {
  * Map container spans the full map card, but the list is a left overlay. Cap preview width
  * to the space from the list’s right edge to the right edge of the map / screen (and images).
  */
-function computePreviewMaxWidthPx(map: MapboxMap): number {
+function computePreviewMaxWidthPx(
+  map: MapboxMap,
+  anchorVariant: "home" | "collection",
+): number {
   const mapR = map.getContainer().getBoundingClientRect();
   const hPad = 20;
   const edgePad = 16;
+
+  if (anchorVariant === "collection") {
+    return Math.min(
+      COLLECTION_PREVIEW_MAX_CAP,
+      Math.max(MIN_PREVIEW_PX, Math.min(mapR.width, window.innerWidth) - 2 * hPad),
+    );
+  }
 
   const panel = document.querySelector<HTMLElement>(PANEL);
   if (!panel) {
@@ -97,6 +146,7 @@ export function ArtworkMapPreview({
   onSelectSlug,
   popupOffsetY,
   onArrowTipViewport,
+  anchorVariant = "home",
 }: Props) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -133,32 +183,54 @@ export function ArtworkMapPreview({
       raf = requestAnimationFrame(() => {
         raf = 0;
         try {
-          const { left, top } = computeCenteredAnchorPx();
-          const maxW = computePreviewMaxWidthPx(map);
+          const { left, top } = computeCenteredAnchorPx(anchorVariant);
+          const maxW = computePreviewMaxWidthPx(map, anchorVariant);
 
-          // Deterministic viewport clamp (no oscillation while the map is animating).
           const { w, h } = sizeRef.current;
           if (w > 0 && h > 0) {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
             let dx = 0;
             let dy = 0;
 
-            const rectLeft = left - w / 2;
-            const rectRight = rectLeft + w;
-            const rectTop = top - h / 2;
-            const rectBottom = rectTop + h;
+            if (anchorVariant === "collection") {
+              const b = getCollectionMapContentBounds();
+              if (b) {
+                const pad = 12;
+                let minCx = b.left + pad + w / 2;
+                let maxCx = b.right - pad - w / 2;
+                let minCy = b.top + pad + h / 2;
+                let maxCy = b.bottom - pad - h / 2;
+                if (minCx > maxCx) {
+                  minCx = maxCx = (b.left + b.right) / 2;
+                }
+                if (minCy > maxCy) {
+                  minCy = maxCy = (b.top + b.bottom) / 2;
+                }
+                const cx = Math.min(maxCx, Math.max(minCx, left));
+                const cy = Math.min(maxCy, Math.max(minCy, top));
+                dx = cx - left;
+                dy = cy - top;
+              }
+            } else {
+              const vw = window.innerWidth;
+              const vh = window.innerHeight;
 
-            if (rectLeft < VIEWPORT_MARGIN_PX) dx += VIEWPORT_MARGIN_PX - rectLeft;
-            if (rectRight > vw - VIEWPORT_MARGIN_PX) dx -= rectRight - (vw - VIEWPORT_MARGIN_PX);
-            if (rectTop < VIEWPORT_MARGIN_PX) dy += VIEWPORT_MARGIN_PX - rectTop;
-            if (rectBottom > vh - VIEWPORT_MARGIN_PX) dy -= rectBottom - (vh - VIEWPORT_MARGIN_PX);
+              const rectLeft = left - w / 2;
+              const rectRight = rectLeft + w;
+              const rectTop = top - h / 2;
+              const rectBottom = rectTop + h;
 
-            // Avoid tiny jitter around the threshold.
-            if (Math.abs(dx) < 0.5) dx = 0;
-            if (Math.abs(dy) < 0.5) dy = 0;
+              if (rectLeft < VIEWPORT_MARGIN_PX) dx += VIEWPORT_MARGIN_PX - rectLeft;
+              if (rectRight > vw - VIEWPORT_MARGIN_PX)
+                dx -= rectRight - (vw - VIEWPORT_MARGIN_PX);
+              if (rectTop < VIEWPORT_MARGIN_PX) dy += VIEWPORT_MARGIN_PX - rectTop;
+              if (rectBottom > vh - VIEWPORT_MARGIN_PX)
+                dy -= rectBottom - (vh - VIEWPORT_MARGIN_PX);
+
+              if (Math.abs(dx) < 0.5) dx = 0;
+              if (Math.abs(dy) < 0.5) dy = 0;
+            }
+
             setNudge({ x: dx, y: dy });
-            // Avoid showing an initial "wrong" frame (e.g. cut off at top) before clamp runs.
             setShown(true);
           }
 
@@ -192,7 +264,7 @@ export function ArtworkMapPreview({
       window.removeEventListener("scroll", tick, true);
       window.removeEventListener("resize", tick);
     };
-  }, [map, popupOffsetY]);
+  }, [anchorVariant, map, popupOffsetY]);
 
   const primaryImage = art.image ?? art.images?.[0];
 
@@ -244,7 +316,10 @@ export function ArtworkMapPreview({
         transition: "opacity 160ms ease",
       }}
     >
-      <div className={`artwork-map-preview-inner ${popupStyles.popupRoot}`}>
+      <div
+        className={`artwork-map-preview-inner ${popupStyles.popupRoot}`}
+        data-anchor-variant={anchorVariant}
+      >
         <div className={popupStyles.topRow}>
           <div className={popupStyles.title}>{art.title}</div>
           <button
