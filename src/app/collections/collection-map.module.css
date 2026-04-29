@@ -126,6 +126,50 @@
   color: var(--muted-foreground);
 }
 
+.description {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: color-mix(in oklch, var(--foreground) 78%, transparent);
+  max-width: 70ch;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.descriptionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.descriptionExpanded {
+  display: block;
+  -webkit-line-clamp: initial;
+  -webkit-box-orient: initial;
+  overflow: visible;
+}
+
+.descriptionToggle {
+  align-self: baseline;
+  margin: 2px 0 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in oklch, var(--primary) 78%, var(--foreground));
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.descriptionToggle:hover {
+  color: color-mix(in oklch, var(--primary) 92%, var(--foreground));
+}
+
 .collectionNav {
   display: inline-flex;
   align-items: center;

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { type CollectionIndexEntry } from "@/lib/collection-routes";
 import dirStyles from "../art/art-directory.module.css";
 import nearbyStyles from "../art/nearby-art.module.css";
@@ -27,9 +28,6 @@ export function CollectionsClient({ entries }: { entries: CollectionIndexEntry[]
       <div className={dirStyles.toolbar}>
         <div className={dirStyles.toolbarRow}>
           <div className={`${dirStyles.toolbarField} ${dirStyles.toolbarSearch}`}>
-            <label className={dirStyles.toolbarLabel} htmlFor={SEARCH_ID}>
-              Search
-            </label>
             <input
               id={SEARCH_ID}
               value={query}
@@ -63,7 +61,21 @@ export function CollectionsClient({ entries }: { entries: CollectionIndexEntry[]
                     className={styles.cardMain}
                     transitionTypes={["nav-forward"]}
                   >
+                    <div className={styles.cardThumbWrap}>
+                      {e.imageUrl ? (
+                        <Image
+                          src={e.imageUrl}
+                          alt=""
+                          fill
+                          sizes="(min-width: 720px) 33vw, 50vw"
+                          className={styles.cardThumb}
+                        />
+                      ) : (
+                        <div className={styles.cardThumbFallback}>No photo</div>
+                      )}
+                    </div>
                     <p className={styles.cardTitle}>{e.name}</p>
+                    {e.description ? <p className={styles.cardDescription}>{e.description}</p> : null}
                     <p className={styles.cardMeta}>
                       {e.count === 1
                         ? "1 artwork"

@@ -8,7 +8,7 @@ import {
   collectionArtDetailQueryString,
   uniqueCollectionNames,
 } from "@/lib/collection-routes";
-import { SITE_PRODUCT_NAME } from "@/lib/site";
+import { getCollectionSeoByName } from "@/lib/airtable-collections";
 import { CollectionMapClient } from "../CollectionMapClient";
 import { getArtSlugFromPageSearchParams } from "@/app/home/home-filter-url";
 
@@ -44,15 +44,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const siteUrl = env.NEXT_PUBLIC_SITE_URL();
   const url = new URL(`/collections/${slug}`, siteUrl).toString();
   const count = inCollection.length;
-  const title = `${name} — Collection`;
-  const description =
+  const seoRow = await getCollectionSeoByName(name);
+  const title = `${name} Collection - Waco Public Art Map`;
+  const fallbackDescription =
     count === 1
       ? `One artwork in the “${name}” collection on Creative Waco’s Public Art Map.`
       : `${count.toLocaleString()} artworks in the “${name}” collection on Creative Waco’s Public Art Map.`;
+  const description = seoRow?.description ?? fallbackDescription;
 
   const hero = pickHero(inCollection);
   return {
-    title: { absolute: `${title} · ${SITE_PRODUCT_NAME}` },
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {
@@ -80,6 +82,7 @@ export default async function CollectionPage({ params, searchParams }: Props) {
   if (!collectionName) notFound();
 
   const inCollection = artworksInCollection(collectionName, artworks);
+  const seoRow = await getCollectionSeoByName(collectionName);
 
   const names = uniqueCollectionNames(artworks);
   const idx = Math.max(0, names.indexOf(collectionName));
@@ -118,6 +121,7 @@ export default async function CollectionPage({ params, searchParams }: Props) {
       />
       <CollectionMapClient
         collectionName={collectionName}
+        collectionDescription={seoRow?.description}
         artworks={inCollection}
         mapboxStyleUrl={mapboxStyleUrl}
         collectionQueryString={collectionArtDetailQueryString(collectionName)}

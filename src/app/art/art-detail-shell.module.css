@@ -65,10 +65,16 @@
 
 /* Mapbox Static snapshot — inline backgroundImage + light wash so the glass panel stays legible */
 .bgWithMap {
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
   background-color: oklch(0.82 0.02 235);
+}
+
+.bgMapImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .bgWithMap::before {

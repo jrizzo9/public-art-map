@@ -21,11 +21,12 @@ Data can come from either:
   - **Desktop/tablet:** the interactive map mounts automatically.
   - **Mobile (narrow viewports):** the map loads on demand (tap **Explore the map** / **Tap to load map**); once loaded, the map switches into a **full-viewport** layout.
 - **Artwork detail (`/art/[slug]`):** a **frosted, centered** card; the page **scrolls** when content is long. When `NEXT_PUBLIC_MAPBOX_TOKEN` and valid coordinates are set, a **Mapbox Static** map image of the **artwork’s location** is used as the full-page background, with a **dark** scrim; otherwise a **gradient** fallback. **View Transitions** animate between the map and the detail page (see `next.config.ts` and `src/app/globals.css`). **SEO:** `<title>` is **`{title} - {artist} - Waco Public Art Map`** (drops the artist segment when missing); **meta description** is built from **category**, **year**, and **description** (`src/lib/artwork-metadata.ts`).
+- **Collection SEO (`/collections/[slug]`):** titles use **`{Collection Name} Collection - Waco Public Art Map`** and descriptions are sourced from Airtable’s **`Public Art Map Collections`** table (with fallback text when description is missing).
 - **Desktop:** the map is **fullscreen**, with the list panel **floating over** the map on the **left** (vertically centered, compact). With **no** artwork preview, the map **eases to `fitBounds`** on the current marker set (full sheet or filtered/search) using padding that leaves room for the panel. With a **narrowed** list and a **selected** row, URL **`art=`**, or the **auto-first** row after changing filters, the camera is driven by **`flyTo`** to that pin (wide **`fitBounds`** is skipped so the active artwork stays in view). After you **clear** the preview (**×** or empty map), the map **`fitBounds`** again to **all markers for the current filter**. Facet state follows the query string **without treating `art=` as a filter change**, so syncing the selected slug to the URL does not rebuild the list/map twice.
 - **Mobile (narrow viewports):** **fullscreen map** with a **floating bottom sheet** (~30% of the viewport) for the panel. Same camera rules as desktop: **overview `fitBounds`** when nothing is selected, **`flyTo`** when a pin is selected (including narrowed lists), **overview again** after clearing the preview. **`art=`** tracks selection without re-running facet derivation for unrelated churn.
 - **Search + filters:** the panel includes a **search bar** (refines map + list) and a toggle button that switches the panel between **Filters** and **List** modes (only one visible at a time). Filters include **category** (pill colors match map markers), **commission**, **collection**, and optional **year** range. **Active filters are reflected in the URL** (query keys `cat`, `comm`, `coll`, `ymin`, `ymax`, plus **`fs=1`** when the map is in full-viewport mode, and optional **`art=<slug>`** for the selected artwork) for sharing and browser history; opening a pasted link restores that state on first load. Facet values in the query string are compared case-insensitively, and **`+`** is treated like a space so encoded names (e.g. multi-word collections) still match the sheet.
 - **Single-collection mode:** when exactly one **collection** chip is selected, the panel shows a short **Curated collection by** line and the **Creative Waco** logo under the list.
-- **Collections routes:** `/collections` lists all collection groupings from the sheet (with search). `/collections/[slug]` opens a collection-first fullscreen map with a bottom artwork carousel, prev/next collection controls, and detail links that preserve collection map context.
+- **Collections routes:** `/collections` lists all collection groupings (with search), including a collection thumbnail and description on each card. `/collections/[slug]` opens a collection-first fullscreen map with a bottom artwork carousel, prev/next collection controls, detail links that preserve collection map context, and an inline-expandable collection description in the footer experience.
 - **Exit fullscreen map:** when the map is expanded to full viewport, an **Exit map** button appears and **Escape** exits as well.
 - Choosing an artwork from the list row (main hit target) or from a map dot opens a **preview card** (rendered above the map, with the **map area dimmed**) showing the title, **artist/year** (when available), an image preview that shows the **full photo** (no crop), and **Details →**. The card includes a small **arrow** pointing to the selected location, and the map camera keeps the selected dot aligned under it (smooth `flyTo`). Each row has a **Details** control that opens **`/art/[slug]`** with the same motion as choosing **Details →** in the preview. Artwork detail pages also include a **Nearby art** section (sorted by distance) to jump to nearby works; thumbnails show the **full photo** (no crop).
 - Click empty map area to clear the preview selection.
@@ -51,7 +52,7 @@ Your Google Sheet must have a header row and (at minimum) these columns:
 | `URL` / `link` / `website` | no | **Website →** link in the **map popup** when valid https URL (not rendered on the detail card) |
 | `image_id` | no | Use with **`NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE`** if no direct image URL column |
 
-Invalid rows (missing required fields / invalid coords) are skipped.
+Invalid rows (missing required fields / invalid coords) are skipped. Runtime geocoding fallback is disabled, so coordinates must be present in your source data.
 
 The CSV parser also accepts common variants like `latitude`/`longitude` and `name` (as `title`). Column headers are matched case-insensitively after normalizing spaces.
 
@@ -66,6 +67,7 @@ Notes:
 - `lat`/`lng` should be Number fields.
 - `image` can be a URL field (preferred) or an Attachment field (attachments are read by URL).
 - Optional moderation workflow: add `status` and use `AIRTABLE_VIEW` to filter published records.
+- Collection metadata table: `Public Art Map Collections` is used for collection descriptions/SEO copy and to resolve Airtable linked-record collection names.
 
 ## Environment variables
 
@@ -87,8 +89,6 @@ NEXT_PUBLIC_MAPBOX_TOKEN="pk.XXXX"
 NEXT_PUBLIC_MAPBOX_STYLE_URL="mapbox://styles/..."
 # Seconds between CSV refetches (ISR). Use 0 for no cache—always fetch latest sheet.
 REVALIDATE_SECONDS="300"
-# If true, attempt to geocode from `address` when `lat`/`lng` are missing (best-effort).
-GEOCODE_MISSING_COORDS="false"
 # NEXT_PUBLIC_ARTWORK_IMAGE_URL_TEMPLATE="https://cdn.example.com/img/{id}.webp"
 EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 

@@ -15,11 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ArtworkMapPreview`** (`src/components/ArtworkMapPreview.tsx`): portaled **map selection preview** for the home map (title, image, prev/next, links) positioned from the map projection and sized to the available map column.
 - **Collections browsing routes:** add `/collections` index and `/collections/[slug]` fullscreen map pages with collection metadata, JSON-LD, and slug-stable routing from sheet collection names.
 - **Collection map experience:** add a bottom artwork carousel, previous/next collection controls, and map/detail link context that preserves the selected collection via `coll=` query state.
+- **Collection metadata integration:** add Airtable collection metadata reads from **`Public Art Map Collections`** for collection descriptions and SEO copy, with UI support on `/collections` cards and `/collections/[slug]` summary/footer.
 
 ### Fixed
 
 - Airtable API error reporting now includes upstream error type/message (for example `VIEW_NAME_NOT_FOUND`) instead of only HTTP status.
 - Health checks now aggregate Airtable fields across sampled records so sparse rows do not produce false “missing column” signals.
+- **Airtable linked collection labels:** resolve linked-record IDs (`rec...`) to human collection names so `/collections` no longer shows raw Airtable record IDs.
+- **Artwork detail map backdrop:** fix broken static-map background rendering on `/art/[slug]` so map imagery appears instead of a flat gray background.
 - **Collections index cards:** remove the secondary **View on map** link so each card has a single primary action and cleaner vertical spacing.
 - **Home `art=` in the address bar:** compare `router.replace` deduping to the **real** query string so `art=<slug>` actually syncs when you select a list row or map marker.
 - **Map preview flicker / double URL updates:** merge the two **`pushFilterUrl` effects** into one so a single selection does not fire **`router.replace` twice**; derive facet state from the query string **with `art` stripped** so syncing **`art=`** does not rebuild **`filtered`** and retrigger map effects.
@@ -36,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Admin map editing is now read-only: `/api/admin/sheet-row` returns `410`, save behavior is removed from the admin map editor, and docs now direct map updates through Airtable workflows.
 - README now documents Airtable-first read configuration, locked Airtable schema expectations, and disabled admin write semantics.
+- **Collection page SEO:** `/collections/[slug]` titles now use **`{Collection Name} Collection - Waco Public Art Map`** and descriptions pull from the Airtable collections table.
+- **Runtime geocoding:** remove app-side fallback geocoding for missing coordinates; the app now expects `lat`/`lng` to be populated in source data (for example via Airtable automation).
 - **Collection map layout:** tune fullscreen map/footer spacing and clamp preview bounds so the selected artwork card stays clear of the top/bottom chrome while keeping marker-arrow alignment.
 - **Artwork SEO (`/art/[slug]`):** document titles use **`{title} - {artist} - Waco Public Art Map`** (absolute title; artist segment omitted when blank); meta descriptions combine **category, year,** and **description** from the sheet, with sensible fallbacks. Open Graph/Twitter titles match. **`/embed/art/[slug]`** uses the same title pattern for the `<title>` tag (still **noindex**).
 - **Home map camera:** animate the **first** **`fitBounds`** overview for a **narrowed** list when no artwork is selected (same easing as the full-catalog overview).

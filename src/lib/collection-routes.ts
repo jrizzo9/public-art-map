@@ -88,6 +88,8 @@ export type CollectionIndexEntry = {
   name: string;
   count: number;
   slug: string;
+  description?: string;
+  imageUrl?: string;
 };
 
 /** Index rows for `/collections` — includes stable slug for detail URLs. */

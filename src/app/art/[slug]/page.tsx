@@ -154,12 +154,17 @@ export default async function ArtPage({ params, searchParams }: Props) {
       <div
         className={`${shellStyles.bg} ${detailMapBgUrl ? shellStyles.bgWithMap : shellStyles.bgFallback}`}
         aria-hidden
-        style={
-          detailMapBgUrl
-            ? { backgroundImage: `url(${JSON.stringify(detailMapBgUrl)})` }
-            : undefined
-        }
-      />
+      >
+        {detailMapBgUrl ? (
+          <img
+            src={detailMapBgUrl}
+            alt=""
+            className={shellStyles.bgMapImg}
+            loading="eager"
+            decoding="async"
+          />
+        ) : null}
+      </div>
 
       <SiteBrandBar titleAs="p" />
 

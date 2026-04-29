@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getArtworks } from "@/lib/sheet";
-import { getCollectionIndexEntries } from "@/lib/collection-routes";
+import { artworksInCollection, getCollectionIndexEntries } from "@/lib/collection-routes";
+import { getCollectionSeoMapByName } from "@/lib/airtable-collections";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "../art/art-detail-shell.module.css";
 import { CollectionsClient } from "./CollectionsClient";
@@ -16,7 +17,18 @@ export const metadata: Metadata = {
 
 export default async function CollectionsPage() {
   const artworks = await getArtworks();
-  const entries = getCollectionIndexEntries(artworks);
+  const baseEntries = getCollectionIndexEntries(artworks);
+  const seoByName = await getCollectionSeoMapByName(baseEntries.map((e) => e.name));
+  const entries = baseEntries.map((entry) => {
+    const inCollection = artworksInCollection(entry.name, artworks);
+    const featuredArtwork = inCollection.find((a) => a.image || a.images?.[0]);
+    const imageUrl = featuredArtwork?.image ?? featuredArtwork?.images?.[0];
+    return {
+      ...entry,
+      description: seoByName.get(entry.name)?.description,
+      imageUrl,
+    };
+  });
 
   return (
     <div className={shellStyles.shell}>
@@ -39,18 +51,6 @@ export default async function CollectionsPage() {
             <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
               Collections
             </h1>
-            <p className="max-w-2xl text-pretty text-sm text-muted-foreground">
-              Groupings from the public art data — open a collection for photos, artwork list,
-              and map.{" "}
-              <Link
-                href="/art"
-                className="font-medium text-foreground/90 underline-offset-4 hover:underline"
-                transitionTypes={["nav-forward"]}
-              >
-                Art directory
-              </Link>{" "}
-              lists every piece with the same filters.
-            </p>
           </header>
 
           {entries.length ? (

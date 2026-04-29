@@ -24,11 +24,11 @@ export type Artwork = {
   collection?: string;
 };
 
-type LatLng = { lat: number; lng: number };
 type Provider = "sheet" | "airtable";
 type FetchOptions =
   | { cache: "no-store" }
   | { next: { revalidate: number } };
+const AIRTABLE_COLLECTIONS_TABLE = "Public Art Map Collections";
 
 const rawArtworkSchema = z.object({
   slug: z.string().trim().min(1),
@@ -55,8 +55,6 @@ const rawArtworkSchema = z.object({
   commission: z.string().optional(),
   collection: z.string().optional(),
 });
-
-const geocodeCache = new Map<string, LatLng | null>();
 
 /** URL-safe slug (artwork slugs, collection routes, etc.). */
 export function slugify(input: string): string {
@@ -146,6 +144,17 @@ function parseImageUrls(raw: string | undefined): string[] {
 }
 
 function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, unknown> {
+  const rawCollection = pickFirst(row, ["collection"]);
+  const collection =
+    typeof rawCollection === "string"
+      ? rawCollection
+      : Array.isArray(rawCollection)
+        ? rawCollection
+            .map((v) => (typeof v === "string" ? v.trim() : ""))
+            .filter(Boolean)
+            .join(", ")
+        : undefined;
+
   return {
     // IMPORTANT: do not use `id` as slug. Prefer explicit `slug` column; otherwise derive from title.
     slug: pickFirst(row, ["slug"]),
@@ -165,61 +174,8 @@ function coerceRowToArtworkShape(row: Record<string, unknown>): Record<string, u
       "commission_by",
       "commissionedby",
     ]),
-    collection: pickFirst(row, ["collection"]),
+    collection,
   };
-}
-
-function normalizeGeocodeQuery(address: string): string {
-  // Keep it simple & stable for caching. Add locality to improve match quality.
-  const cleaned = address.trim().replace(/\s+/g, " ");
-  if (!cleaned) return "";
-  return cleaned.toLowerCase().includes("waco") ? cleaned : `${cleaned}, Waco, TX`;
-}
-
-async function geocodeAddress(address: string): Promise<LatLng | null> {
-  if (!env.GEOCODE_MISSING_COORDS()) return null;
-  const token = env.NEXT_PUBLIC_MAPBOX_TOKEN();
-  if (!token) return null;
-
-  const query = normalizeGeocodeQuery(address);
-  if (!query) return null;
-
-  const cached = geocodeCache.get(query);
-  if (cached !== undefined) return cached;
-
-  const url = new URL(
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`,
-  );
-  url.searchParams.set("access_token", token);
-  url.searchParams.set("limit", "1");
-  url.searchParams.set("types", "address,poi,place,locality");
-
-  try {
-    const res = await fetch(url.toString(), { cache: "no-store" });
-    if (!res.ok) {
-      geocodeCache.set(query, null);
-      return null;
-    }
-    const json = (await res.json()) as {
-      features?: Array<{ center?: [number, number] }>;
-    };
-    const center = json.features?.[0]?.center;
-    if (!center || center.length !== 2) {
-      geocodeCache.set(query, null);
-      return null;
-    }
-    const [lng, lat] = center;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      geocodeCache.set(query, null);
-      return null;
-    }
-    const ll = { lat, lng };
-    geocodeCache.set(query, ll);
-    return ll;
-  } catch {
-    geocodeCache.set(query, null);
-    return null;
-  }
 }
 
 async function fetchCsvText(): Promise<string> {
@@ -281,18 +237,65 @@ async function fetchAirtableRows(): Promise<Record<string, unknown>[]> {
       );
     }
     const json = (await res.json()) as {
-      records?: Array<{ fields?: Record<string, unknown> }>;
+      records?: Array<{ id?: string; fields?: Record<string, unknown> }>;
       offset?: string;
     };
     for (const r of json.records ?? []) {
       if (r.fields && typeof r.fields === "object") {
-        records.push(r.fields);
+        records.push({
+          __record_id: r.id,
+          ...r.fields,
+        });
       }
     }
     offset = json.offset;
   } while (offset);
 
   return records;
+}
+
+async function fetchAirtableCollectionNameByRecordId(): Promise<Map<string, string>> {
+  const token = env.AIRTABLE_API_TOKEN().trim();
+  const baseId = env.AIRTABLE_BASE_ID().trim();
+  if (!token || !baseId) return new Map();
+
+  const out = new Map<string, string>();
+  let offset: string | undefined;
+  const requestOptions = getRequestOptions();
+
+  do {
+    const url = new URL(
+      `https://api.airtable.com/v0/${encodeURIComponent(baseId)}/${encodeURIComponent(AIRTABLE_COLLECTIONS_TABLE)}`,
+    );
+    url.searchParams.set("pageSize", "100");
+    if (offset) url.searchParams.set("offset", offset);
+
+    const res = await fetch(url.toString(), {
+      ...requestOptions,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return new Map();
+
+    const json = (await res.json()) as {
+      records?: Array<{ id?: string; fields?: Record<string, unknown> }>;
+      offset?: string;
+    };
+
+    for (const record of json.records ?? []) {
+      const id = record.id?.trim();
+      if (!id) continue;
+      const fields = record.fields ?? {};
+      const normalized = normalizeRowKeys(fields);
+      const name = pickFirst(normalized, ["name", "title", "collection", "collection_name"]);
+      if (typeof name === "string" && name.trim()) {
+        out.set(id, name.trim());
+      }
+    }
+
+    offset = json.offset;
+  } while (offset);
+
+  return out;
 }
 
 function parseCsvRows(csvText: string): Record<string, unknown>[] {
@@ -316,34 +319,28 @@ async function readSourceRows(provider: Provider): Promise<Record<string, unknow
 export async function getArtworks(): Promise<Artwork[]> {
   const provider = env.DATA_PROVIDER();
   const rows = await readSourceRows(provider);
+  const collectionNameByRecordId =
+    provider === "airtable" ? await fetchAirtableCollectionNameByRecordId() : new Map<string, string>();
 
   const results: Artwork[] = [];
   const usedSlugs = new Set<string>();
   for (const row of rows) {
     const normalized = normalizeRowKeys(row);
     const coerced = coerceRowToArtworkShape(normalized);
-
-     // If lat/lng are missing but we have an address, optionally geocode.
-     const maybeLat = coerced.lat;
-     const maybeLng = coerced.lng;
-     const missingCoords =
-       maybeLat === undefined ||
-       maybeLat === null ||
-       (typeof maybeLat === "string" && !maybeLat.trim()) ||
-       maybeLng === undefined ||
-       maybeLng === null ||
-       (typeof maybeLng === "string" && !maybeLng.trim());
-
-     if (missingCoords) {
-       const address = coerced.address;
-       if (typeof address === "string" && address.trim()) {
-         const ll = await geocodeAddress(address);
-         if (ll) {
-           coerced.lat = ll.lat;
-           coerced.lng = ll.lng;
-         }
-       }
-     }
+    if (provider === "airtable" && typeof coerced.collection === "string") {
+      const ids = coerced.collection
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (ids.length > 0 && ids.every((id) => /^rec[a-zA-Z0-9]{10,}$/.test(id))) {
+        const names = ids
+          .map((id) => collectionNameByRecordId.get(id))
+          .filter((v): v is string => !!v);
+        if (names.length) {
+          coerced.collection = names.join(", ");
+        }
+      }
+    }
 
      // If id/slug is missing, derive from title (best effort).
      const rawSlug = coerced.slug;

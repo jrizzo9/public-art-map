@@ -17,6 +17,7 @@ const MapView = dynamic(
 
 type Props = {
   collectionName: string;
+  collectionDescription?: string;
   artworks: Artwork[];
   mapboxStyleUrl: string;
   /** Query string without `?` — `coll=…` for artwork detail links */
@@ -37,6 +38,7 @@ function resolveInitialArtSlug(
 
 export function CollectionMapClient({
   collectionName,
+  collectionDescription,
   artworks,
   mapboxStyleUrl,
   collectionQueryString,
@@ -50,6 +52,7 @@ export function CollectionMapClient({
   const [selectedSlug, setSelectedSlug] = useState<string | undefined>(() =>
     resolveInitialArtSlug(initialArtSlug, artworks),
   );
+  const [showFullDescription, setShowFullDescription] = useState(false);
   const [previewClosedSignal, setPreviewClosedSignal] = useState(0);
   const prevSelectedRef = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -255,6 +258,22 @@ export function CollectionMapClient({
             <p className={styles.count}>
               {count === 1 ? "1 artwork" : `${count.toLocaleString()} artworks`}
             </p>
+            {collectionDescription ? (
+              <div className={styles.descriptionRow}>
+                <p
+                  className={`${styles.description}${showFullDescription ? ` ${styles.descriptionExpanded}` : ""}`}
+                >
+                  {collectionDescription}
+                </p>
+                <button
+                  type="button"
+                  className={styles.descriptionToggle}
+                  onClick={() => setShowFullDescription((prev) => !prev)}
+                >
+                  {showFullDescription ? "Collapse" : "Expand"}
+                </button>
+              </div>
+            ) : null}
             {(prevCollectionHref || nextCollectionHref) && (
               <div className={styles.collectionNav}>
                 {prevCollectionHref ? (
