@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Artwork } from "@/lib/sheet";
-import type { SheetPatch } from "@/lib/google-sheets-write";
 import styles from "./map-info-editor.module.css";
 
 type LocationMode = "address" | "coordinates";
@@ -61,77 +60,6 @@ function draftsEqual(a: Draft, b: Draft): boolean {
     a.commission.trim() === b.commission.trim() &&
     a.collection.trim() === b.collection.trim()
   );
-}
-
-function buildPatch(draft: Draft, baseline: Draft): SheetPatch {
-  const patch: SheetPatch = {};
-
-  if (draft.title.trim() !== baseline.title.trim()) {
-    patch.title = draft.title.trim();
-  }
-  if (draft.artist.trim() !== baseline.artist.trim()) {
-    patch.artist = draft.artist.trim() || null;
-  }
-
-  if (draft.year.trim() !== baseline.year.trim()) {
-    const y = draft.year.trim();
-    if (!y) patch.year = null;
-    else {
-      const n = parseInt(y, 10);
-      if (!Number.isFinite(n)) throw new Error("Year must be a whole number.");
-      patch.year = n;
-    }
-  }
-
-  if (draft.description.trim() !== baseline.description.trim()) {
-    patch.description = draft.description.trim() || null;
-  }
-
-  if (draft.image.trim() !== baseline.image.trim()) {
-    patch.image = draft.image.trim() || null;
-  }
-
-  if (draft.category.trim() !== baseline.category.trim()) {
-    patch.category = draft.category.trim() || null;
-  }
-
-  if (draft.commission.trim() !== baseline.commission.trim()) {
-    patch.commission = draft.commission.trim() || null;
-  }
-
-  if (draft.collection.trim() !== baseline.collection.trim()) {
-    patch.collection = draft.collection.trim() || null;
-  }
-
-  if (draft.address.trim() !== baseline.address.trim()) {
-    patch.address = draft.address.trim() || null;
-  }
-
-  if (draft.lat.trim() !== baseline.lat.trim()) {
-    const t = draft.lat.trim();
-    if (!t) patch.lat = null;
-    else {
-      const n = parseFloat(t);
-      if (!Number.isFinite(n) || n < -90 || n > 90) {
-        throw new Error("Latitude must be between -90 and 90.");
-      }
-      patch.lat = n;
-    }
-  }
-
-  if (draft.lng.trim() !== baseline.lng.trim()) {
-    const t = draft.lng.trim();
-    if (!t) patch.lng = null;
-    else {
-      const n = parseFloat(t);
-      if (!Number.isFinite(n) || n < -180 || n > 180) {
-        throw new Error("Longitude must be between -180 and 180.");
-      }
-      patch.lng = n;
-    }
-  }
-
-  return patch;
 }
 
 function ImageUrlField({
@@ -300,7 +228,6 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
   const [query, setQuery] = useState("");
   /** Artwork picker list is collapsed by default so the editor stays primary. */
   const [listOpen, setListOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "ok" | "err" | "muted"; text: string } | null>(
     null,
   );
@@ -360,56 +287,6 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
     }
   }
 
-  async function handleSave() {
-    if (!draft || !baseline || !selectedSlug) return;
-    setStatus(null);
-    let patch: SheetPatch;
-    try {
-      patch = buildPatch(draft, baseline);
-    } catch (e) {
-      setStatus({
-        type: "err",
-        text: e instanceof Error ? e.message : "Invalid values.",
-      });
-      return;
-    }
-
-    if (Object.keys(patch).length === 0) {
-      setStatus({ type: "muted", text: "No changes to save." });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/sheet-row", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: selectedSlug, patch }),
-      });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
-      if (!res.ok) {
-        throw new Error(json.error ?? `Save failed (${res.status}).`);
-      }
-
-      const nextList = await refreshArtworks();
-      const fresh = nextList.find((a) => a.slug === selectedSlug);
-      if (fresh) {
-        const nd = artworkToDraft(fresh);
-        setBaseline(nd);
-        setDraft(nd);
-        setLocationMode(deriveLocationMode(nd));
-      }
-      setStatus({ type: "ok", text: "Saved. The map and directory will show updates after the sheet refreshes." });
-    } catch (e) {
-      setStatus({
-        type: "err",
-        text: e instanceof Error ? e.message : "Save failed.",
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
   function handleReset() {
     if (!baseline) return;
     setDraft({ ...baseline });
@@ -420,7 +297,7 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
   if (!artworks.length) {
     return (
       <div className={styles.emptyState}>
-        No artworks loaded. Check <code>SHEET_CSV_URL</code> and republish the sheet.
+        No artworks loaded. Check your configured data provider env (sheet CSV or Airtable).
       </div>
     );
   }
@@ -494,16 +371,8 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
           <div className={styles.actions}>
             <button
               type="button"
-              className={styles.saveBtn}
-              disabled={!dirty || saving || !draft}
-              onClick={() => void handleSave()}
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
-            <button
-              type="button"
               className={styles.resetBtn}
-              disabled={!draft || saving || !dirty}
+              disabled={!draft || !dirty}
               onClick={handleReset}
             >
               Reset
@@ -609,7 +478,7 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
 
               <ImageUrlField
                 slug={draft.slug}
-                disabled={saving}
+                disabled={false}
                 value={draft.image}
                 onChange={(v) => setDraft((d) => (d ? { ...d, image: v } : d))}
               />
@@ -635,6 +504,7 @@ export function MapInfoEditor({ initialArtworks }: { initialArtworks: Artwork[] 
                   {status.text}
                 </p>
               ) : null}
+              <p className={styles.statusMuted}>Admin saving is disabled. Airtable form workflow is the source of truth.</p>
             </div>
           </>
         ) : null}

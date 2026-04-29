@@ -9,7 +9,9 @@ Next.js app that renders:
 - **Public submission** intake at `/submit`
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 
-Data comes from a **published Google Sheet CSV** (no Google credentials required).
+Data can come from either:
+- **Published Google Sheet CSV** (`DATA_PROVIDER=sheet`, default; no Google credentials required for reads)
+- **Airtable API** (`DATA_PROVIDER=airtable`)
 
 ## UI notes
 
@@ -53,13 +55,32 @@ Invalid rows (missing required fields / invalid coords) are skipped.
 
 The CSV parser also accepts common variants like `latitude`/`longitude` and `name` (as `title`). Column headers are matched case-insensitively after normalizing spaces.
 
+## Airtable contract (locked schema)
+
+When `DATA_PROVIDER=airtable`, lock your Airtable table to these field names for read + admin edit compatibility:
+
+`slug`, `title`, `lat`, `lng`, `description`, `image`, `address`, `category`, `artist`, `year`, `commission`, `collection`, `externalUrl`, `image_id`.
+
+Notes:
+- `slug` should be unique.
+- `lat`/`lng` should be Number fields.
+- `image` can be a URL field (preferred) or an Attachment field (attachments are read by URL).
+- Optional moderation workflow: add `status` and use `AIRTABLE_VIEW` to filter published records.
+
 ## Environment variables
 
 Create `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SITE_URL="https://map.creativewaco.org"
+# Optional read provider switch: `sheet` (default) or `airtable`
+# DATA_PROVIDER="sheet"
 SHEET_CSV_URL="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"
+# Airtable read provider (required only when DATA_PROVIDER=airtable)
+# AIRTABLE_API_TOKEN="pat..."
+# AIRTABLE_BASE_ID="appXXXXXXXXXXXXXX"
+# AIRTABLE_TABLE="Artworks"
+# AIRTABLE_VIEW="Published"
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.XXXX"
 
 # Optional (defaults to the Creative Waco Mapbox Studio style when unset)
@@ -81,8 +102,6 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON + Submissions tab (see scripts/submissions-sheet-header-row.csv).
 # Optional: SHEET_SUBMISSIONS_RANGE='Submissions'!A:Z
 
-# Optional: sheet row patches (POST /api/admin/sheet-row) — see .env.example (no request secret; protect the deployment if the URL is public).
-
 # Admin UI: password login; required to use /admin and /api/admin/* (except /api/admin/auth).
 # ADMIN_PASSWORD="your-secret"
 
@@ -93,17 +112,17 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 Notes:
 
 - `NEXT_PUBLIC_SITE_URL` is used to build absolute URLs (OpenGraph/Twitter images, canonical URLs, `robots.txt`, `sitemap.xml`). In production it falls back to `https://map.creativewaco.org` when unset (and on Vercel will also use `VERCEL_URL`).
+- When `DATA_PROVIDER=airtable`, artwork reads are served from Airtable (paginated API fetch, optional `AIRTABLE_VIEW` filter).
 
 ## Admin + API
 
 - **Admin** routes require **`ADMIN_PASSWORD`**: sign in at `/admin/login` (HTTP-only session cookie). **Middleware** blocks `/admin` and `/api/admin/*` without a valid session (**`/api/admin/auth`** is public for login/logout). The admin layout includes a small top **nav** (Map, Art, optional Submit, Admin).
-- Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Edit map info** (collapsible artwork picker, field editor, optional **Replace image** upload via `POST /api/admin/cloudinary`; saves through `POST /api/admin/sheet-row` when sheet updates are configured).
-- **`POST /api/admin/sheet-row`** uses the **Google Sheets API** when `SHEET_ID` + `GOOGLE_SERVICE_ACCOUNT_JSON` are set (same pattern as submissions); **Apps Script** is only used if that pair is missing and the Apps Script URL + token are set.
+- Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Map info viewer** (browse/search artwork data in admin; map writes are disabled).
 - Submit flow (when **`NEXT_PUBLIC_SUBMIT_ENABLED=true`**): `http://localhost:3000/submit` — `POST /api/submissions/prepare` returns signed Cloudinary upload slots; `POST /api/submissions/finalize` verifies uploads and **appends a row** to the **Submissions** sheet (requires `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and a header row—see `scripts/submissions-sheet-header-row.csv`). Photos live in Cloudinary only; submission text and image URLs are stored in the sheet. When the flag is off, `/submit` redirects to `/`.
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`
-- Optional sheet updates: `POST /api/admin/sheet-row` (no request secret—use **`ADMIN_PASSWORD`** + middleware for admin callers; configure Google Sheets API **or** Apps Script fallback per `.env.example`).
+- `POST /api/admin/sheet-row` is disabled (returns `410`) because admin map writes are turned off.
 
 ### Cloudinary server routes (scripts + integrations)
 

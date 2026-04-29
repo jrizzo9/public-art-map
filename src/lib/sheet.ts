@@ -25,6 +25,10 @@ export type Artwork = {
 };
 
 type LatLng = { lat: number; lng: number };
+type Provider = "sheet" | "airtable";
+type FetchOptions =
+  | { cache: "no-store" }
+  | { next: { revalidate: number } };
 
 const rawArtworkSchema = z.object({
   slug: z.string().trim().min(1),
@@ -68,7 +72,26 @@ function normalizeRowKeys(row: Record<string, unknown>): Record<string, unknown>
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(row)) {
     const key = k.trim().toLowerCase().replace(/\s+/g, "_");
-    out[key] = typeof v === "string" ? v.trim() : v;
+    if (typeof v === "string") {
+      out[key] = v.trim();
+      continue;
+    }
+    // Airtable attachments are arrays of objects with `url`; store as comma list.
+    if (Array.isArray(v)) {
+      const urls = v
+        .map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (item && typeof item === "object" && "url" in item) {
+            const maybe = (item as { url?: unknown }).url;
+            return typeof maybe === "string" ? maybe.trim() : "";
+          }
+          return "";
+        })
+        .filter(Boolean);
+      out[key] = urls.length ? urls.join(", ") : v;
+      continue;
+    }
+    out[key] = v;
   }
   return out;
 }
@@ -202,12 +225,10 @@ async function geocodeAddress(address: string): Promise<LatLng | null> {
 async function fetchCsvText(): Promise<string> {
   const url = env.SHEET_CSV_URL();
   if (!url) return "";
-  const seconds = env.REVALIDATE_SECONDS();
+  const requestOptions = getRequestOptions();
   const res = await fetch(
     url,
-    seconds === 0
-      ? { cache: "no-store" }
-      : { next: { revalidate: seconds } },
+    requestOptions,
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch SHEET_CSV_URL (${res.status})`);
@@ -215,18 +236,90 @@ async function fetchCsvText(): Promise<string> {
   return await res.text();
 }
 
-export async function getArtworks(): Promise<Artwork[]> {
-  const csvText = await fetchCsvText();
-  if (!csvText) return [];
+function getRequestOptions(): FetchOptions {
+  const seconds = env.REVALIDATE_SECONDS();
+  return seconds === 0 ? { cache: "no-store" } : { next: { revalidate: seconds } };
+}
+
+async function fetchAirtableRows(): Promise<Record<string, unknown>[]> {
+  const token = env.AIRTABLE_API_TOKEN().trim();
+  const baseId = env.AIRTABLE_BASE_ID().trim();
+  const table = env.AIRTABLE_TABLE().trim();
+  const view = env.AIRTABLE_VIEW().trim();
+  if (!token || !baseId || !table) {
+    throw new Error(
+      "Airtable provider requires AIRTABLE_API_TOKEN, AIRTABLE_BASE_ID, and AIRTABLE_TABLE.",
+    );
+  }
+
+  const records: Record<string, unknown>[] = [];
+  let offset: string | undefined;
+  const requestOptions = getRequestOptions();
+  do {
+    const url = new URL(
+      `https://api.airtable.com/v0/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}`,
+    );
+    url.searchParams.set("pageSize", "100");
+    if (view) url.searchParams.set("view", view);
+    if (offset) url.searchParams.set("offset", offset);
+
+    const res = await fetch(url.toString(), {
+      ...requestOptions,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as
+        | { error?: { type?: string; message?: string } }
+        | null;
+      const apiType = body?.error?.type?.trim();
+      const apiMessage = body?.error?.message?.trim();
+      const details = [apiType, apiMessage].filter(Boolean).join(": ");
+      throw new Error(
+        details
+          ? `Failed to fetch Airtable (${res.status}) - ${details}`
+          : `Failed to fetch Airtable (${res.status})`,
+      );
+    }
+    const json = (await res.json()) as {
+      records?: Array<{ fields?: Record<string, unknown> }>;
+      offset?: string;
+    };
+    for (const r of json.records ?? []) {
+      if (r.fields && typeof r.fields === "object") {
+        records.push(r.fields);
+      }
+    }
+    offset = json.offset;
+  } while (offset);
+
+  return records;
+}
+
+function parseCsvRows(csvText: string): Record<string, unknown>[] {
   const parsed = Papa.parse<Record<string, unknown>>(csvText, {
     header: true,
     skipEmptyLines: true,
     dynamicTyping: false,
   });
+  return parsed.data;
+}
+
+async function readSourceRows(provider: Provider): Promise<Record<string, unknown>[]> {
+  if (provider === "airtable") {
+    return await fetchAirtableRows();
+  }
+  const csvText = await fetchCsvText();
+  if (!csvText) return [];
+  return parseCsvRows(csvText);
+}
+
+export async function getArtworks(): Promise<Artwork[]> {
+  const provider = env.DATA_PROVIDER();
+  const rows = await readSourceRows(provider);
 
   const results: Artwork[] = [];
   const usedSlugs = new Set<string>();
-  for (const row of parsed.data) {
+  for (const row of rows) {
     const normalized = normalizeRowKeys(row);
     const coerced = coerceRowToArtworkShape(normalized);
 

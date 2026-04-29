@@ -25,6 +25,7 @@ export const PATCH_FIELD_ALIASES: Record<string, string[]> = {
 };
 
 export type PatchFieldKey = keyof typeof PATCH_FIELD_ALIASES;
+export type ArtworkPatch = Partial<Record<PatchFieldKey, string | number | null>>;
 
 export function resolveColumnIndex(
   headers: string[],

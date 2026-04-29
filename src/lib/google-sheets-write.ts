@@ -4,6 +4,7 @@ import {
   parseSheetNameFromRange,
   PATCH_FIELD_ALIASES,
   resolveColumnIndex,
+  type ArtworkPatch,
   type PatchFieldKey,
 } from "@/lib/sheet-header-match";
 import { env } from "@/lib/env";
@@ -78,15 +79,13 @@ function findRowIndexBySlug(headers: string[], rows: string[][], slug: string): 
   throw new Error(`No row with slug "${slug}".`);
 }
 
-export type SheetPatch = Partial<Record<PatchFieldKey, string | number | null>>;
-
 /**
  * Updates one data row matching `slug`. Unknown patch keys are ignored if not in PATCH_FIELD_ALIASES.
  * Pass `null` to clear a cell (empty string in Sheet).
  */
 export async function updateArtworkRowBySlug(
   slug: string,
-  patch: SheetPatch,
+  patch: ArtworkPatch,
 ): Promise<{ rowNumber: number; updatedFields: string[] }> {
   const { sheets, spreadsheetId, rangeA1 } = await getSheetsContext();
 

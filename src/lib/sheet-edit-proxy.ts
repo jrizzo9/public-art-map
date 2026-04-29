@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import type { SheetPatch } from "@/lib/google-sheets-write";
+import type { ArtworkPatch } from "@/lib/sheet-header-match";
 
 /**
  * Forwards an update to a Google Apps Script Web App (doPost).
@@ -11,7 +11,7 @@ import type { SheetPatch } from "@/lib/google-sheets-write";
  */
 export async function forwardSheetEditToAppsScript(
   slug: string,
-  patch: SheetPatch,
+  patch: ArtworkPatch,
 ): Promise<{ status: number; body: unknown }> {
   const url = env.SHEET_EDIT_API_URL().trim();
   const apiToken = env.SHEET_EDIT_API_TOKEN().trim();

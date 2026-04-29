@@ -15,6 +15,9 @@ function normalizeOrigin(raw: string): string {
 }
 
 export const env = {
+  /** `sheet` (default) or `airtable` for artwork read source. */
+  DATA_PROVIDER: (): "sheet" | "airtable" =>
+    optional("DATA_PROVIDER") === "airtable" ? "airtable" : "sheet",
   NEXT_PUBLIC_SITE_URL: () =>
     normalizeOrigin(
       optional("NEXT_PUBLIC_SITE_URL") ??
@@ -29,6 +32,10 @@ export const env = {
               : "http://localhost:3000")),
     ),
   SHEET_CSV_URL: () => optional("SHEET_CSV_URL") ?? "",
+  AIRTABLE_API_TOKEN: () => optional("AIRTABLE_API_TOKEN") ?? "",
+  AIRTABLE_BASE_ID: () => optional("AIRTABLE_BASE_ID") ?? "",
+  AIRTABLE_TABLE: () => optional("AIRTABLE_TABLE") ?? "Artworks",
+  AIRTABLE_VIEW: () => optional("AIRTABLE_VIEW") ?? "",
   NEXT_PUBLIC_MAPBOX_TOKEN: () => optional("NEXT_PUBLIC_MAPBOX_TOKEN") ?? "",
   /**
    * Mapbox Studio default for this app. Override with `NEXT_PUBLIC_MAPBOX_STYLE_URL` (e.g. on Vercel).
