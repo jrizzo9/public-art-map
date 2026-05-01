@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { SiteBrandBar } from "@/components/SiteBrandBar";
 import shellStyles from "@/app/art/art-detail-shell.module.css";
 import { env } from "@/lib/env";
-import { SubmitArtPanel } from "./SubmitArtPanel";
+import { AirtableSubmitEmbed } from "./AirtableSubmitEmbed";
 
 export const metadata: Metadata = {
   title: "Submit public art",
@@ -35,17 +35,7 @@ export default function SubmitPage() {
         </header>
 
         <div className={`${shellStyles.panelInner} ${shellStyles.panelInnerIndex}`}>
-          <header className="mb-4 space-y-1">
-            <h1 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
-              Submit public art
-            </h1>
-            <p className="max-w-2xl text-pretty text-sm text-muted-foreground">
-              Share artwork we should consider for the map. Photos upload to our media library;
-              include your email so we can follow up.
-            </p>
-          </header>
-
-          <SubmitArtPanel />
+          <AirtableSubmitEmbed />
         </div>
       </main>
     </div>

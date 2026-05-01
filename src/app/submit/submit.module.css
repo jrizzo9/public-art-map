@@ -235,3 +235,20 @@
   white-space: nowrap;
   border: 0;
 }
+
+.embedWrap {
+  margin-top: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: calc(var(--radius-md) * 0.92);
+  border: 1px solid var(--panel-border);
+  background: transparent;
+}
+
+.embed {
+  display: block;
+  width: 100%;
+  border: 0;
+  /* Cross-origin: can’t match Airtable’s content height; use viewport-relative bounds. */
+  height: clamp(480px, 75dvh, 1200px);
+}

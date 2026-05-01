@@ -6,7 +6,7 @@ Next.js app that renders:
 - **Collections index** at `/collections` (search + open collection pages)
 - **Collection map pages** at `/collections/[slug]` (fullscreen map + bottom carousel)
 - **SEO detail pages** at `/art/[slug]`
-- **Public submission** intake at `/submit`
+- **Public submission** intake at `/submit` (**embedded Airtable form** when `NEXT_PUBLIC_SUBMIT_ENABLED=true`)
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 
 Data can come from either:
@@ -98,8 +98,10 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # CLOUDINARY_API_SECRET="..."
 # CLOUDINARY_FOLDER="public-art-map"
 
-# Public submissions (/submit): SUBMISSIONS_PREPARE_SECRET; Cloudinary vars for direct photo uploads;
-# SHEET_ID + GOOGLE_SERVICE_ACCOUNT_JSON + Submissions tab (see scripts/submissions-sheet-header-row.csv).
+# /submit is an embedded Airtable form in the app (no extra env for the embed URL).
+# Optional legacy submission APIs: SUBMISSIONS_PREPARE_SECRET; Cloudinary; SHEET_ID +
+# GOOGLE_SERVICE_ACCOUNT_JSON + Submissions tab (see scripts/submissions-sheet-header-row.csv) for
+# POST /api/submissions/prepare|finalize if you use that pipeline outside the public page.
 # Optional: SHEET_SUBMISSIONS_RANGE='Submissions'!A:Z
 
 # Admin UI: password login; required to use /admin and /api/admin/* (except /api/admin/auth).
@@ -118,7 +120,7 @@ Notes:
 
 - **Admin** routes require **`ADMIN_PASSWORD`**: sign in at `/admin/login` (HTTP-only session cookie). **Middleware** blocks `/admin` and `/api/admin/*` without a valid session (**`/api/admin/auth`** is public for login/logout). The admin layout includes a small top **nav** (Map, Art, optional Submit, Admin).
 - Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Map info viewer** (browse/search artwork data in admin; map writes are disabled).
-- Submit flow (when **`NEXT_PUBLIC_SUBMIT_ENABLED=true`**): `http://localhost:3000/submit` — `POST /api/submissions/prepare` returns signed Cloudinary upload slots; `POST /api/submissions/finalize` verifies uploads and **appends a row** to the **Submissions** sheet (requires `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and a header row—see `scripts/submissions-sheet-header-row.csv`). Photos live in Cloudinary only; submission text and image URLs are stored in the sheet. When the flag is off, `/submit` redirects to `/`.
+- Submit flow (when **`NEXT_PUBLIC_SUBMIT_ENABLED=true`**): `http://localhost:3000/submit` shows an **embedded Airtable** submission form (responsive iframe). When the flag is off, `/submit` redirects to `/`. **`POST /api/submissions/prepare`** / **`POST /api/submissions/finalize`** remain available for a **legacy** Cloudinary + Google Sheet submission pipeline (configure Cloudinary, `SUBMISSIONS_PREPARE_SECRET`, and sheet credentials if you call those routes); they are **not** used by the public `/submit` page anymore.
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`

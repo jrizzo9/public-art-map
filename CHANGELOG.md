@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public **`/submit`** replaces the in-app Cloudinary upload form with an **embedded Airtable** “New Public Artwork Submission” form; the iframe uses a **responsive height** (`clamp(480px, 75dvh, 1200px)`) because cross-origin embeds cannot auto-size to form content.
 - Admin map editing is now read-only: `/api/admin/sheet-row` returns `410`, save behavior is removed from the admin map editor, and docs now direct map updates through Airtable workflows.
 - README now documents Airtable-first read configuration, locked Airtable schema expectations, and disabled admin write semantics.
 - **Collection page SEO:** `/collections/[slug]` titles now use **`{Collection Name} Collection - Waco Public Art Map`** and descriptions pull from the Airtable collections table.
