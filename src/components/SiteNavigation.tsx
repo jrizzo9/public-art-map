@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isSubmitPublicArtEnabled } from "@/lib/env";
 import styles from "./SiteNavigation.module.css";
 
-const SUBMIT_ENABLED = process.env.NEXT_PUBLIC_SUBMIT_ENABLED === "true";
+const SUBMIT_ENABLED = isSubmitPublicArtEnabled();
 
 function startsWith(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);

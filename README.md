@@ -6,7 +6,7 @@ Next.js app that renders:
 - **Collections index** at `/collections` (search + open collection pages)
 - **Collection map pages** at `/collections/[slug]` (fullscreen map + bottom carousel)
 - **SEO detail pages** at `/art/[slug]`
-- **Public submission** intake at `/submit` (**embedded Airtable form** when `NEXT_PUBLIC_SUBMIT_ENABLED=true`)
+- **Public submission** intake at `/submit` (**embedded Airtable form**; enabled by default, set `NEXT_PUBLIC_SUBMIT_ENABLED=false` to hide)
 - **Webflow-safe embeds** at `/embed/art/[slug]` (noindex + canonical to `/art/[slug]`)
 
 Data can come from either:
@@ -107,8 +107,8 @@ EMBED_ALLOWED_ORIGINS="https://creativewaco.org,https://www.creativewaco.org"
 # Admin UI: password login; required to use /admin and /api/admin/* (except /api/admin/auth).
 # ADMIN_PASSWORD="your-secret"
 
-# Set to true to enable the /submit CTA on the home page, /submit, and sitemap /submit when appropriate.
-# NEXT_PUBLIC_SUBMIT_ENABLED=true
+# Submit is on by default. Set false to disable /submit (redirects to /) and hide Submit CTAs.
+# NEXT_PUBLIC_SUBMIT_ENABLED=false
 ```
 
 Notes:
@@ -120,7 +120,7 @@ Notes:
 
 - **Admin** routes require **`ADMIN_PASSWORD`**: sign in at `/admin/login` (HTTP-only session cookie). **Middleware** blocks `/admin` and `/api/admin/*` without a valid session (**`/api/admin/auth`** is public for login/logout). The admin layout includes a small top **nav** (Map, Art, optional Submit, Admin).
 - Admin page: `http://localhost:3000/admin` — **Public submissions** (rows loaded from the Google Sheet **Submissions** tab when Sheets API credentials are configured) and **Map info viewer** (browse/search artwork data in admin; map writes are disabled).
-- Submit flow (when **`NEXT_PUBLIC_SUBMIT_ENABLED=true`**): `http://localhost:3000/submit` shows an **embedded Airtable** submission form (responsive iframe). When the flag is off, `/submit` redirects to `/`. **`POST /api/submissions/prepare`** / **`POST /api/submissions/finalize`** remain available for a **legacy** Cloudinary + Google Sheet submission pipeline (configure Cloudinary, `SUBMISSIONS_PREPARE_SECRET`, and sheet credentials if you call those routes); they are **not** used by the public `/submit` page anymore.
+- Submit flow (**on by default**; disable with **`NEXT_PUBLIC_SUBMIT_ENABLED=false`**): `http://localhost:3000/submit` shows an **embedded Airtable** submission form (responsive iframe). When disabled, `/submit` redirects to `/`. **`POST /api/submissions/prepare`** / **`POST /api/submissions/finalize`** remain available for a **legacy** Cloudinary + Google Sheet submission pipeline (configure Cloudinary, `SUBMISSIONS_PREPARE_SECRET`, and sheet credentials if you call those routes); they are **not** used by the public `/submit` page anymore.
 - Health check: `http://localhost:3000/api/health`
 - Artworks JSON: `http://localhost:3000/api/artworks`
 - Single artwork JSON: `http://localhost:3000/api/artworks/<slug>`

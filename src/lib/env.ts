@@ -14,6 +14,17 @@ function normalizeOrigin(raw: string): string {
   }
 }
 
+/**
+ * Public `/submit` + home submit CTA. **Default on** (no Vercel env required).
+ * Set `NEXT_PUBLIC_SUBMIT_ENABLED` to `false` or `0` to disable and redirect `/submit` → `/`.
+ * Safe in client components (only reads `NEXT_PUBLIC_*`).
+ */
+export function isSubmitPublicArtEnabled(): boolean {
+  const v = optional("NEXT_PUBLIC_SUBMIT_ENABLED");
+  if (v === "false" || v === "0") return false;
+  return true;
+}
+
 export const env = {
   /** `sheet` (default) or `airtable` for artwork read source. */
   DATA_PROVIDER: (): "sheet" | "airtable" =>
@@ -85,8 +96,9 @@ export const env = {
 
   /** Plain password for `/admin` UI + `/api/admin/*`. Set in production (e.g. Vercel). */
   ADMIN_PASSWORD: () => optional("ADMIN_PASSWORD") ?? "",
-  /** When `'true'`, shows the home submit control and `/submit`. Otherwise disabled. */
-  submitPublicArtEnabled: () =>
-    optional("NEXT_PUBLIC_SUBMIT_ENABLED") === "true",
+  /**
+   * Public `/submit` + home submit CTA. **Default on** (no env needed on Vercel).
+   * Set `NEXT_PUBLIC_SUBMIT_ENABLED` to `false` or `0` to disable and redirect `/submit` → `/`.
+   */
+  submitPublicArtEnabled: () => isSubmitPublicArtEnabled(),
 };
-

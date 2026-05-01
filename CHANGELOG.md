@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`NEXT_PUBLIC_SUBMIT_ENABLED`** semantics: public submit (`/submit` + CTAs) is **on by default**; set to **`false`** or **`0`** to disable (previously required **`true`** with no env entry treated as off).
 - Public **`/submit`** replaces the in-app Cloudinary upload form with an **embedded Airtable** “New Public Artwork Submission” form; the iframe uses a **responsive height** (`clamp(480px, 75dvh, 1200px)`) because cross-origin embeds cannot auto-size to form content.
 - Admin map editing is now read-only: `/api/admin/sheet-row` returns `410`, save behavior is removed from the admin map editor, and docs now direct map updates through Airtable workflows.
 - README now documents Airtable-first read configuration, locked Airtable schema expectations, and disabled admin write semantics.
